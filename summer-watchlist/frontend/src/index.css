@@ -1,0 +1,43 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  body {
+    @apply bg-[#05050f] text-white antialiased overflow-x-hidden;
+  }
+}
+
+@layer components {
+  .glass-panel {
+    @apply bg-white/5 backdrop-blur-xl border border-white/10 shadow-glass rounded-3xl;
+  }
+  
+  .glass-card {
+    @apply bg-white/5 backdrop-blur-xl border border-white/10 rounded-2xl shadow-glass transition-all duration-300 relative overflow-hidden;
+  }
+
+  .glass-card:hover {
+    @apply bg-white/10 border-white/20;
+  }
+
+  .neon-text-primary {
+    text-shadow: 0 0 10px #00f2fe, 0 0 20px #00f2fe;
+  }
+
+  .neon-text-secondary {
+    text-shadow: 0 0 10px #fe0979, 0 0 20px #fe0979;
+  }
+  
+  .btn-primary {
+    @apply px-6 py-3 rounded-full bg-gradient-to-r from-[#00f2fe] to-[#4facfe] text-black font-bold hover:shadow-neon-primary transition-all duration-300 transform hover:-translate-y-1;
+  }
+
+  .btn-secondary {
+    @apply px-6 py-3 rounded-full bg-white/10 text-white border border-white/20 hover:bg-white/20 transition-all duration-300 backdrop-blur-md;
+  }
+
+  .input-field {
+    @apply w-full px-6 py-3 rounded-xl bg-white/5 border border-white/10 focus:outline-none focus:border-[#00f2fe] focus:shadow-neon-primary text-white transition-all backdrop-blur-md;
+  }
+}

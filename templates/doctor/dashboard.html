@@ -1,0 +1,360 @@
+{% extends "dashboard_base.html" %}
+
+{% block title %}Doctor Dashboard - CareSync AI{% endblock %}
+
+{% block sidebar %}
+<div class="sidebar-content">
+    <div class="sidebar-header">
+        <h5><i class="bi bi-person-badge me-2"></i>Doctor Panel</h5>
+    </div>
+    <nav class="sidebar-nav">
+        <a href="{{ url_for('doctor_dashboard') }}" class="nav-link active">
+            <i class="bi bi-speedometer2"></i>My Patients
+        </a>
+    </nav>
+
+    <div class="sidebar-section mt-4">
+        <h6 class="text-muted text-uppercase small">Quick Stats</h6>
+        <div class="quick-stat">
+            <span>{{ patients|length }}</span>
+            <label>Assigned Patients</label>
+        </div>
+        <div class="quick-stat">
+            <span class="text-danger">{{ critical_alerts|length }}</span>
+            <label>Critical Alerts</label>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block dashboard_content %}
+{% if critical_alerts %}
+<div class="alert alert-danger alert-banner mb-4">
+    <div class="d-flex align-items-center">
+        <i class="bi bi-exclamation-octagon-fill fs-4 me-3"></i>
+        <div>
+            <strong>{{ critical_alerts|length }} Critical Alert(s)!</strong>
+            <span class="ms-2">Immediate attention required for patient vitals.</span>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+<h1><i class="bi bi-activity me-2"></i>My Patients</h1>
+<p class="text-muted">Real-time patient monitoring - Dr. {{ staff.full_name }}</p>
+<button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#scheduleRoundModal">
+    <i class="bi bi-calendar-plus me-1"></i>Schedule Round
+</button>
+
+<!-- Rounds Timeline -->
+<div class="card mb-4">
+    <div class="card-header bg-white">
+        <h5 class="mb-0">Today's Rounds</h5>
+    </div>
+    <div class="card-body">
+        {% if todays_rounds %}
+        <div class="rounds-timeline">
+            {% for round in todays_rounds %}
+            <div
+                class="d-flex align-items-center mb-3 pb-3 border-bottom {{ 'opacity-50' if round.status == 'completed' else '' }}">
+                <div class="me-3 text-center" style="min-width: 60px;">
+                    <div class="fw-bold">{{ round.scheduled_time.strftime('%H:%M') }}</div>
+                    <small class="text-muted">{{ round.status|title }}</small>
+                </div>
+                <div class="flex-grow-1">
+                    <h6 class="mb-0">{{ round.patient.full_name }} <small class="text-muted">(Room {{
+                            round.patient.room_number }})</small></h6>
+                    <small class="text-muted">{{ round.notes or 'No notes' }}</small>
+                </div>
+                <div>
+                    {% if round.status == 'pending' %}
+                    <form action="{{ url_for('complete_round', round_id=round.id) }}" method="POST" class="d-inline">
+                        <button class="btn btn-sm btn-success">
+                            <i class="bi bi-check-lg"></i> Complete
+                        </button>
+                    </form>
+                    {% else %}
+                    <span class="badge bg-success"><i class="bi bi-check-circle-fill"></i> Done</span>
+                    {% endif %}
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+        {% else %}
+        <p class="text-muted text-center my-3">No rounds scheduled for today.</p>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Schedule Round Modal -->
+<div class="modal fade" id="scheduleRoundModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Schedule a Round</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form action="{{ url_for('schedule_round') }}" method="POST">
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label">Patient</label>
+                        <select name="patient_id" class="form-select" required>
+                            {% for patient in patients %}
+                            <option value="{{ patient.id }}">{{ patient.full_name }} ({{ patient.room_number }})
+                            </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Time</label>
+                        <input type="time" name="scheduled_time" class="form-control" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Notes (Optional)</label>
+                        <textarea name="notes" class="form-control" rows="2"></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Schedule</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<div class="patients-grid" id="patientsGrid">
+    {% for patient in patients %}
+    <div class="patient-card patient-{{ patient.latest_vitals.status if patient.latest_vitals else 'normal' }}"
+        data-patient-id="{{ patient.id }}">
+        <div class="patient-header">
+            <div class="patient-info">
+                <h5>{{ patient.full_name }}</h5>
+                <span class="patient-id">{{ patient.patient_id }}</span>
+            </div>
+            <span class="status-badge status-{{ patient.status }}">
+                {{ patient.status|upper }}
+            </span>
+        </div>
+
+        <div class="patient-location">
+            <i class="bi bi-geo-alt"></i>
+            Room {{ patient.room_number or '-' }}, Bed {{ patient.bed_number or '-' }}
+        </div>
+        {% if patient.lab_reports and patient.lab_reports|length > 0 %}
+        <div class="patient-labs small text-muted mt-2">
+            Latest lab: {{ patient.lab_reports[0].test_name }} ({{
+            patient.lab_reports[0].reported_at.strftime('%Y-%m-%d') }})
+        </div>
+        {% endif %}
+
+        {% if patient.latest_vitals %}
+        <div class="vitals-grid">
+            <div
+                class="vital-item vital-{{ 'critical' if patient.latest_vitals.heart_rate and (patient.latest_vitals.heart_rate < 55 or patient.latest_vitals.heart_rate > 85) else 'warning' if patient.latest_vitals.heart_rate and (patient.latest_vitals.heart_rate < 60 or patient.latest_vitals.heart_rate > 80) else 'normal' }}">
+                <i class="bi bi-heart-pulse"></i>
+                <div class="vital-value" data-vital="heart_rate">{{ patient.latest_vitals.heart_rate|int if
+                    patient.latest_vitals.heart_rate else '--' }}</div>
+                <div class="vital-label">bpm</div>
+            </div>
+            <div
+                class="vital-item vital-{{ 'critical' if patient.latest_vitals.blood_pressure_systolic and (patient.latest_vitals.blood_pressure_systolic < 90 or patient.latest_vitals.blood_pressure_systolic > 160) else 'warning' if patient.latest_vitals.blood_pressure_systolic and (patient.latest_vitals.blood_pressure_systolic < 100 or patient.latest_vitals.blood_pressure_systolic > 140) else 'normal' }}">
+                <i class="bi bi-droplet"></i>
+                <div class="vital-value" data-vital="bp">{{ patient.latest_vitals.blood_pressure_systolic|int if
+                    patient.latest_vitals.blood_pressure_systolic else 'Nill' }}/{{
+                    patient.latest_vitals.blood_pressure_diastolic|int if patient.latest_vitals.blood_pressure_diastolic
+                    else 'Nill' }}</div>
+                <div class="vital-label">mmHg</div>
+            </div>
+            <div
+                class="vital-item vital-{{ 'critical' if patient.latest_vitals.oxygen_saturation and patient.latest_vitals.oxygen_saturation < 92 else 'warning' if patient.latest_vitals.oxygen_saturation and patient.latest_vitals.oxygen_saturation < 95 else 'normal' }}">
+                <i class="bi bi-lungs"></i>
+                <div class="vital-value" data-vital="oxygen">{{ patient.latest_vitals.oxygen_saturation|int if
+                    patient.latest_vitals.oxygen_saturation else '--' }}</div>
+                <div class="vital-label">SpO2 %</div>
+            </div>
+            <div
+                class="vital-item vital-{{ 'critical' if patient.latest_vitals.temperature and (patient.latest_vitals.temperature < 95 or patient.latest_vitals.temperature > 100) else 'warning' if patient.latest_vitals.temperature and (patient.latest_vitals.temperature < 96 or patient.latest_vitals.temperature > 99) else 'normal' }}">
+                <i class="bi bi-thermometer-half"></i>
+                <div class="vital-value" data-vital="temperature">{{ '%.1f'|format(patient.latest_vitals.temperature) if
+                    patient.latest_vitals.temperature else '--' }}</div>
+                <div class="vital-label">°F</div>
+            </div>
+        </div>
+        <div class="vital-timestamp">
+            <i class="bi bi-clock"></i>
+            Last updated: <span data-vital="timestamp">{{ patient.latest_vitals.recorded_at.strftime('%H:%M:%S')
+                }}</span>
+        </div>
+        {% else %}
+        <div class="no-vitals">
+            <i class="bi bi-exclamation-circle"></i>
+            <p>No vital signs recorded</p>
+        </div>
+        {% endif %}
+
+        <div class="patient-actions">
+            <a href="{{ url_for('patient_detail', patient_id=patient.id) }}" class="btn btn-outline-primary btn-sm">
+                <i class="bi bi-eye me-1"></i>Details
+            </a>
+            <a href="{{ url_for('patient_risk_analysis', patient_id=patient.id) }}" class="btn btn-info btn-sm">
+                <i class="bi bi-cpu me-1"></i>AI Risk
+            </a>
+            <a href="{{ url_for('add_doctor_note', patient_id=patient.id) }}" class="btn btn-outline-secondary btn-sm">
+                <i class="bi bi-file-text me-1"></i>Note
+            </a>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+
+{% if not patients %}
+<div class="empty-state">
+    <i class="bi bi-person-x"></i>
+    <h4>No Patients Assigned</h4>
+    <p>You don't have any patients assigned to you at the moment.</p>
+</div>
+{% endif %}
+
+{% if active_alerts %}
+<div class="card mt-4">
+    <div class="card-header">
+        <h5><i class="bi bi-bell me-2"></i>Active Alerts</h5>
+    </div>
+    <div class="card-body p-0">
+        <div class="alert-list">
+            {% for alert in active_alerts[:10] %}
+            <div class="alert-item alert-{{ alert.severity }}" data-alert-id="{{ alert.id }}"
+                data-patient-name="{{ alert.patient.full_name }}" data-room="{{ alert.patient.room_number }}"
+                data-bed="{{ alert.patient.bed_number }}">
+                <div class="alert-icon">
+                    {% if alert.severity == 'critical' %}
+                    <i class="bi bi-exclamation-octagon-fill"></i>
+                    {% else %}
+                    <i class="bi bi-exclamation-triangle-fill"></i>
+                    {% endif %}
+                </div>
+                <div class="alert-content">
+                    <h6>{{ alert.title }}</h6>
+                    <p>{{ alert.message }}</p>
+                    <small class="text-muted">{{ alert.created_at.strftime('%H:%M:%S') }}</small>
+                </div>
+                <form action="{{ url_for('acknowledge_alert', alert_id=alert.id) }}" method="POST" data-alert-id="{{ alert.id }}">
+                    <button type="submit" class="btn btn-sm btn-outline-secondary">
+                        <i class="bi bi-check"></i> Acknowledge
+                    </button>
+                </form>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+</div>
+{% endif %}
+{% endblock %}
+
+{% block scripts %}
+{{ super() }}
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        // Check if there are critical alerts and show popup + beep for doctor/nurse
+        const alertElements = document.querySelectorAll('.alert-item');
+
+        console.log('Doctor dashboard loaded. Alert elements found:', alertElements.length);
+
+        if (alertElements.length > 0) {
+            // Show emergency modal with first alert using global handler (app.js)
+            const firstAlert = alertElements[0];
+            if (firstAlert) {
+                console.log('Processing first alert:', firstAlert.dataset.alertId);
+                const alertObj = {
+                    id: firstAlert.dataset.alertId || null,
+                    severity: firstAlert.classList.contains('alert-critical') ? 'critical' : 'warning',
+                    patient_name: firstAlert.dataset.patientName || firstAlert.querySelector('h6')?.textContent || 'Patient',
+                    room: firstAlert.dataset.room || '-',
+                    bed: firstAlert.dataset.bed || '-',
+                    message: firstAlert.querySelector('p')?.textContent || 'Patient requires immediate attention'
+                };
+
+                console.log('Alert object:', alertObj);
+                if (window.showEmergencyAlert) {
+                    console.log('Calling global showEmergencyAlert');
+                    window.showEmergencyAlert(alertObj);
+                } else {
+                    console.error('window.showEmergencyAlert not found');
+                }
+            }
+        }
+    });
+
+    // Trigger emergency alert popup 30 seconds after dashboard loads (only once per session)
+    window.addEventListener('load', function() {
+        const alertTriggered = sessionStorage.getItem('emergencyAlertTriggered');
+        if (!alertTriggered) {
+            setTimeout(function() {
+                fetch('/api/trigger-emergency-alert', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-Requested-With': 'XMLHttpRequest'
+                    }
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        sessionStorage.setItem('emergencyAlertTriggered', 'true');
+                        // Show popup alert
+                        showEmergencyPopup({
+                            severity: data.severity,
+                            patient_name: data.patient_name,
+                            message: data.message,
+                            alert_id: data.alert_id
+                        });
+                        // Reload alerts to show in table
+                        location.reload();
+                    }
+                })
+                .catch(err => console.error('Error triggering alert:', err));
+            }, 30000); // 30 seconds
+        }
+    });
+
+    function showEmergencyPopup(alert) {
+        const title = alert.severity === 'critical' ? '🚨 CRITICAL EMERGENCY ALERT!' : '⚠️ EMERGENCY ALERT';
+        const message = `
+            <strong>${alert.patient_name}</strong><br>
+            <p>${alert.message}</p>
+        `;
+        
+        // Create modal if it doesn't exist
+        let modal = document.getElementById('emergencyAlertModal');
+        if (!modal) {
+            const modalHTML = `
+                <div class="modal fade" id="emergencyAlertModal" tabindex="-1" data-bs-backdrop="static" data-bs-keyboard="false">
+                    <div class="modal-dialog modal-lg modal-dialog-centered">
+                        <div class="modal-content bg-danger text-white">
+                            <div class="modal-header border-0">
+                                <h5 class="modal-title" id="emergencyTitle"></h5>
+                                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                            </div>
+                            <div class="modal-body" id="emergencyMessage"></div>
+                            <div class="modal-footer border-0">
+                                <button type="button" class="btn btn-light" data-bs-dismiss="modal">Acknowledge</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+            document.body.insertAdjacentHTML('beforeend', modalHTML);
+            modal = document.getElementById('emergencyAlertModal');
+        }
+        
+        document.getElementById('emergencyTitle').textContent = title;
+        document.getElementById('emergencyMessage').innerHTML = message;
+        
+        const bsModal = new bootstrap.Modal(modal);
+        bsModal.show();
+
+        // Trigger multilingual voice alert
+    }
+</script>
+{% endblock %}

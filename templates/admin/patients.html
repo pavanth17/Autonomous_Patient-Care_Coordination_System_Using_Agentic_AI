@@ -1,0 +1,97 @@
+{% extends "dashboard_base.html" %}
+
+{% block title %}All Patients - CareSync AI{% endblock %}
+
+{% block sidebar %}
+<div class="sidebar-content">
+    <div class="sidebar-header">
+        <h5><i class="bi bi-shield-check me-2"></i>Admin Panel</h5>
+    </div>
+    <nav class="sidebar-nav">
+        <a href="{{ url_for('admin_dashboard') }}" class="nav-link">
+            <i class="bi bi-speedometer2"></i>Dashboard
+        </a>
+        <a href="{{ url_for('admin_users') }}" class="nav-link">
+            <i class="bi bi-people"></i>Manage Staff
+        </a>
+        <a href="{{ url_for('admin_register') }}" class="nav-link">
+            <i class="bi bi-person-plus"></i>Register Staff
+        </a>
+        <a href="{{ url_for('admin_patients') }}" class="nav-link active">
+            <i class="bi bi-person-heart"></i>All Patients
+        </a>
+    </nav>
+</div>
+{% endblock %}
+
+{% block dashboard_content %}
+<div class="page-header">
+    <h1><i class="bi bi-person-heart me-2"></i>All Patients</h1>
+    <p class="text-muted">Complete patient registry</p>
+</div>
+
+<div class="card">
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table table-hover mb-0">
+                <thead class="table-dark">
+                    <tr>
+                        <th>Patient ID</th>
+                        <th>Name</th>
+                        <th>Age/Gender</th>
+                        <th>Room/Bed</th>
+                        <th>Status</th>
+                        <th>Diagnosis</th>
+                        <th>Assigned Doctor</th>
+                        <th>Assigned Nurse</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for patient in patients %}
+                    <tr>
+                        <td><code>{{ patient.patient_id }}</code></td>
+                        <td>{{ patient.full_name }}</td>
+                        <td>{{ patient.age }}y / {{ patient.gender[0] }}</td>
+                        <td>{{ patient.room_number or '-' }} / {{ patient.bed_number or '-' }}</td>
+                        <td>
+                            {% if patient.status == 'icu' %}
+                            <span class="badge bg-danger">ICU</span>
+                            {% elif patient.status == 'emergency' %}
+                            <span class="badge bg-warning text-dark">Emergency</span>
+                            {% elif patient.status == 'admitted' %}
+                            <span class="badge bg-primary">Admitted</span>
+                            {% elif patient.status == 'discharged' %}
+                            <span class="badge bg-secondary">Discharged</span>
+                            {% else %}
+                            <span class="badge bg-info">{{ patient.status|title }}</span>
+                            {% endif %}
+                        </td>
+                        <td>{{ patient.diagnosis[:30] + '...' if patient.diagnosis and patient.diagnosis|length > 30 else patient.diagnosis or '-' }}</td>
+                        <td>
+                            {% if patient.assigned_doctor %}
+                            Dr. {{ patient.assigned_doctor.full_name }}
+                            {% else %}
+                            <span class="text-muted">Not assigned</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if patient.assigned_nurse %}
+                            {{ patient.assigned_nurse.full_name }}
+                            {% else %}
+                            <span class="text-muted">Not assigned</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            <a href="{{ url_for('patient_detail', patient_id=patient.id) }}" class="btn btn-sm btn-outline-primary">
+                                <i class="bi bi-eye"></i> View
+                            </a>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}

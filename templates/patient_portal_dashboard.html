@@ -1,0 +1,144 @@
+{% extends "patient_portal_base.html" %}
+
+{% block patient_content %}
+<div class="header-bar d-flex justify-content-between align-items-center mb-4 p-3 bg-white rounded shadow-sm border">
+    <div class="d-flex align-items-center">
+        <div class="avatar me-3 bg-primary text-white rounded-circle d-flex align-items-center justify-content-center" style="width: 50px; height: 50px; font-size: 1.5rem;">
+            {{ patient.first_name[0] }}{{ patient.last_name[0] }}
+        </div>
+        <div>
+            <h4 class="mb-0 fw-bold">Welcome, {{ patient.first_name }}!</h4>
+            <p class="text-muted mb-0 small"><i class="bi bi-person-badge me-1"></i>Patient ID: {{ patient.patient_id }}</p>
+        </div>
+    </div>
+    <div class="d-flex gap-2">
+        <a href="{{ url_for('patient_portal_appointments') }}" class="btn btn-primary d-flex align-items-center">
+            <i class="bi bi-calendar-plus me-2"></i>Book New Appointment
+        </a>
+        <div class="dropdown">
+            <button class="btn btn-outline-secondary dropdown-toggle" type="button" data-bs-toggle="dropdown">
+                <i class="bi bi-translate me-1"></i> Language
+            </button>
+            <ul class="dropdown-menu">
+                <li><a class="dropdown-item" href="#">English</a></li>
+                <li><a class="dropdown-item" href="#">हिन्दी (Hindi)</a></li>
+                <li><a class="dropdown-item" href="#">తెలుగు (Telugu)</a></li>
+                <li><a class="dropdown-item" href="#">தமிழ் (Tamil)</a></li>
+            </ul>
+        </div>
+    </div>
+</div>
+
+<div class="row g-4 mb-4">
+    <!-- Quick Stats -->
+    <div class="col-md-3">
+        <div class="card border-0 shadow-sm h-100">
+            <div class="card-body text-center">
+                <div class="text-primary mb-2"><i class="bi bi-capsule fs-1"></i></div>
+                <h5>{{ active_meds_count }}</h5>
+                <p class="text-muted mb-0">Active Meds</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card border-0 shadow-sm h-100">
+            <div class="card-body text-center">
+                <div class="text-success mb-2"><i class="bi bi-calendar-event fs-1"></i></div>
+                <h5>{{ upcoming_appointments_count }}</h5>
+                <p class="text-muted mb-0">Upcoming Appts</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card border-0 shadow-sm h-100">
+            <div class="card-body text-center">
+                <div class="text-info mb-2"><i class="bi bi-heart-pulse fs-1"></i></div>
+                <h5>{{ latest_vital.heart_rate if latest_vital else '--' }}</h5>
+                <p class="text-muted mb-0">Last Heart Rate</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card border-0 shadow-sm h-100">
+            <div class="card-body text-center">
+                <div class="text-warning mb-2"><i class="bi bi-file-medical fs-1"></i></div>
+                <h5>{{ lab_reports_count }}</h5>
+                <p class="text-muted mb-0">Lab Reports</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row g-4">
+    <div class="col-md-8">
+        <div class="card border-0 shadow-sm">
+            <div class="card-header bg-transparent border-0 py-3">
+                <h5 class="card-title mb-0">Recent Activity</h5>
+            </div>
+            <div class="card-body">
+                {% if recent_activity %}
+                <ul class="list-group list-group-flush">
+                    {% for item in recent_activity %}
+                    <li class="list-group-item px-0">
+                        <div class="d-flex align-items-center">
+                            <div class="me-3">
+                                {% if item.type == 'medication' %}
+                                <span class="badge bg-primary rounded-circle p-2"><i class="bi bi-capsule"></i></span>
+                                {% elif item.type == 'appointment' %}
+                                <span class="badge bg-success rounded-circle p-2"><i class="bi bi-calendar"></i></span>
+                                {% elif item.type == 'vital' %}
+                                <span class="badge bg-info rounded-circle p-2"><i class="bi bi-heart"></i></span>
+                                {% else %}
+                                <span class="badge bg-secondary rounded-circle p-2"><i class="bi bi-circle"></i></span>
+                                {% endif %}
+                            </div>
+                            <div class="flex-grow-1">
+                                <h6 class="mb-0">{{ item.title }}</h6>
+                                <small class="text-muted">{{ item.description }}</small>
+                            </div>
+                            <small class="text-muted">{{ item.time }}</small>
+                        </div>
+                    </li>
+                    {% endfor %}
+                </ul>
+                {% else %}
+                <p class="text-muted text-center py-3">No recent activity.</p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card border-0 shadow-sm bg-primary text-white">
+            <div class="card-body">
+                <h5><i class="bi bi-robot me-2"></i>AI Assistant</h5>
+                <p>Have questions about your medication or recovery?</p>
+                <a href="{{ url_for('patient_portal_chat') }}" class="btn btn-light w-100 text-primary fw-bold">Chat
+                    Now</a>
+            </div>
+        </div>
+
+        <div class="card border-0 shadow-sm mt-4">
+            <div class="card-header bg-transparent border-0 py-3">
+                <h5 class="card-title mb-0">My Doctor</h5>
+            </div>
+            <div class="card-body">
+                {% if patient.assigned_doctor %}
+                <div class="d-flex align-items-center mb-3">
+                    <div class="avatar bg-light text-primary rounded-circle d-flex align-items-center justify-content-center me-3"
+                        style="width: 50px; height: 50px;">
+                        <i class="bi bi-person-user fs-4"></i>
+                    </div>
+                    <div>
+                        <h6 class="mb-0">{{ patient.assigned_doctor.full_name }}</h6>
+                        <small class="text-muted">{{ patient.assigned_doctor.specialization or 'General Physician'
+                            }}</small>
+                    </div>
+                </div>
+                {% else %}
+                <p class="text-muted">No specific doctor assigned.</p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

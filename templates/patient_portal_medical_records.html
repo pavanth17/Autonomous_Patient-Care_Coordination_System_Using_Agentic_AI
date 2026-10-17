@@ -1,0 +1,292 @@
+{% extends "patient_portal_base.html" %}
+
+{% block content %}
+<div class="header-bar">
+    <h4 class="mb-0">Medical Records</h4>
+</div>
+
+<div class="row">
+    <!-- Nav Tabs -->
+    <div class="col-12">
+        <ul class="nav nav-tabs mb-4" role="tablist">
+            <li class="nav-item" role="presentation">
+                <button class="nav-link active" id="notes-tab" data-bs-toggle="tab" data-bs-target="#notes" type="button" role="tab" aria-controls="notes" aria-selected="true">
+                    <i class="bi bi-file-earmark-text me-2"></i>Doctor Notes
+                </button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link" id="treatments-tab" data-bs-toggle="tab" data-bs-target="#treatments" type="button" role="tab" aria-controls="treatments" aria-selected="false">
+                    <i class="bi bi-capsule me-2"></i>Treatments
+                </button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link" id="vitals-tab" data-bs-toggle="tab" data-bs-target="#vitals" type="button" role="tab" aria-controls="vitals" aria-selected="false">
+                    <i class="bi bi-heart-pulse me-2"></i>Vitals History
+                </button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link" id="meds-tab" data-bs-toggle="tab" data-bs-target="#meds" type="button" role="tab" aria-controls="meds" aria-selected="false">
+                    <i class="bi bi-pill me-2"></i>Medications
+                </button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link" id="alerts-tab" data-bs-toggle="tab" data-bs-target="#alerts" type="button" role="tab" aria-controls="alerts" aria-selected="false">
+                    <i class="bi bi-bell me-2"></i>Alerts
+                </button>
+            </li>
+        </ul>
+    </div>
+</div>
+
+<div class="tab-content">
+    <!-- Doctor Notes Tab -->
+    <div class="tab-pane fade show active" id="notes" role="tabpanel" aria-labelledby="notes-tab">
+        <div class="card border-0 shadow-sm">
+            <div class="card-header bg-light border-0 py-3">
+                <h5 class="card-title mb-0">Doctor Notes</h5>
+                <small class="text-muted">Clinical observations and assessments</small>
+            </div>
+            <div class="card-body">
+                {% if doctor_notes %}
+                <div class="notes-list">
+                    {% for note in doctor_notes %}
+                    <div class="note-card mb-3 p-3 border rounded">
+                        <div class="d-flex justify-content-between align-items-start mb-2">
+                            <div>
+                                <h6 class="mb-1">{{ note.note_type|upper }}</h6>
+                                <small class="text-muted">By Dr. {{ note.doctor.full_name }}</small>
+                            </div>
+                            <small class="text-muted">{{ note.created_at.strftime('%Y-%m-%d %H:%M') }}</small>
+                        </div>
+                        
+                        {% if note.subjective %}
+                        <div class="mb-2">
+                            <strong>Subjective:</strong>
+                            <p class="mb-0">{{ note.subjective }}</p>
+                        </div>
+                        {% endif %}
+                        
+                        {% if note.objective %}
+                        <div class="mb-2">
+                            <strong>Objective:</strong>
+                            <p class="mb-0">{{ note.objective }}</p>
+                        </div>
+                        {% endif %}
+                        
+                        {% if note.assessment %}
+                        <div class="mb-2">
+                            <strong>Assessment:</strong>
+                            <p class="mb-0">{{ note.assessment }}</p>
+                        </div>
+                        {% endif %}
+                        
+                        {% if note.plan %}
+                        <div class="mb-2">
+                            <strong>Plan:</strong>
+                            <p class="mb-0">{{ note.plan }}</p>
+                        </div>
+                        {% endif %}
+                    </div>
+                    {% endfor %}
+                </div>
+                {% else %}
+                <p class="text-muted text-center py-4">No doctor notes recorded yet.</p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <!-- Treatments Tab -->
+    <div class="tab-pane fade" id="treatments" role="tabpanel" aria-labelledby="treatments-tab">
+        <div class="card border-0 shadow-sm">
+            <div class="card-header bg-light border-0 py-3">
+                <h5 class="card-title mb-0">Treatments</h5>
+                <small class="text-muted">Medical procedures and treatments received</small>
+            </div>
+            <div class="card-body">
+                {% if treatments %}
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Type</th>
+                                <th>Description</th>
+                                <th>Staff</th>
+                                <th>Date</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for treatment in treatments %}
+                            <tr>
+                                <td><strong>{{ treatment.treatment_type }}</strong></td>
+                                <td>{{ treatment.description[:60] }}{% if treatment.description|length > 60 %}...{% endif %}</td>
+                                <td>{{ treatment.staff.full_name }}</td>
+                                <td><small>{{ treatment.performed_at.strftime('%Y-%m-%d') }}</small></td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% else %}
+                <p class="text-muted text-center py-4">No treatments recorded yet.</p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <!-- Vitals History Tab -->
+    <div class="tab-pane fade" id="vitals" role="tabpanel" aria-labelledby="vitals-tab">
+        <div class="card border-0 shadow-sm">
+            <div class="card-header bg-light border-0 py-3">
+                <h5 class="card-title mb-0">Vital Signs History</h5>
+                <small class="text-muted">Recent vital measurements</small>
+            </div>
+            <div class="card-body">
+                {% if vitals %}
+                <div class="table-responsive">
+                    <table class="table table-hover table-sm">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Date/Time</th>
+                                <th>HR (bpm)</th>
+                                <th>BP (mmHg)</th>
+                                <th>SpO2 (%)</th>
+                                <th>Temp (°F)</th>
+                                <th>RR (/min)</th>
+                                <th>Status</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for vital in vitals %}
+                            <tr>
+                                <td><small>{{ vital.recorded_at.strftime('%Y-%m-%d %H:%M') }}</small></td>
+                                <td>{{ vital.heart_rate or '-' }}</td>
+                                <td>{{ vital.blood_pressure_systolic or '-' }}/{{ vital.blood_pressure_diastolic or '-' }}</td>
+                                <td>{{ vital.oxygen_saturation or '-' }}</td>
+                                <td>{{ vital.temperature or '-' }}</td>
+                                <td>{{ vital.respiratory_rate or '-' }}</td>
+                                <td>
+                                    {% if vital.status == 'critical' %}
+                                    <span class="badge bg-danger">Critical</span>
+                                    {% elif vital.status == 'warning' %}
+                                    <span class="badge bg-warning text-dark">Warning</span>
+                                    {% else %}
+                                    <span class="badge bg-success">Normal</span>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% else %}
+                <p class="text-muted text-center py-4">No vital signs recorded yet.</p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <!-- Medications Tab -->
+    <div class="tab-pane fade" id="meds" role="tabpanel" aria-labelledby="meds-tab">
+        <div class="card border-0 shadow-sm">
+            <div class="card-header bg-light border-0 py-3">
+                <h5 class="card-title mb-0">Current Medications</h5>
+                <small class="text-muted">Active and past medications</small>
+            </div>
+            <div class="card-body">
+                {% if medications %}
+                <div class="medications-list">
+                    {% for med in medications %}
+                    <div class="med-card mb-3 p-3 border rounded {% if not med.is_active %}bg-light{% endif %}">
+                        <div class="d-flex justify-content-between align-items-start mb-2">
+                            <div>
+                                <h6 class="mb-1">{{ med.name }}</h6>
+                                <small class="text-muted">Prescribed by: {{ med.prescribed_by.full_name if med.prescribed_by else 'Unknown' }}</small>
+                            </div>
+                            {% if med.is_active %}
+                            <span class="badge bg-success">Active</span>
+                            {% else %}
+                            <span class="badge bg-secondary">Inactive</span>
+                            {% endif %}
+                        </div>
+                        
+                        <div class="row text-sm">
+                            <div class="col-md-3">
+                                <small><strong>Dosage:</strong> {{ med.dosage }}</small>
+                            </div>
+                            <div class="col-md-3">
+                                <small><strong>Frequency:</strong> {{ med.frequency }}</small>
+                            </div>
+                            <div class="col-md-3">
+                                <small><strong>Route:</strong> {{ med.route or 'Oral' }}</small>
+                            </div>
+                            <div class="col-md-3">
+                                <small><strong>Started:</strong> {{ med.start_date.strftime('%Y-%m-%d') if med.start_date else 'N/A' }}</small>
+                            </div>
+                        </div>
+                        
+                        {% if med.notes %}
+                        <div class="mt-2">
+                            <small><strong>Notes:</strong> {{ med.notes }}</small>
+                        </div>
+                        {% endif %}
+                    </div>
+                    {% endfor %}
+                </div>
+                {% else %}
+                <p class="text-muted text-center py-4">No medications recorded.</p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <!-- Alerts Tab -->
+    <div class="tab-pane fade" id="alerts" role="tabpanel" aria-labelledby="alerts-tab">
+        <div class="card border-0 shadow-sm">
+            <div class="card-header bg-light border-0 py-3">
+                <h5 class="card-title mb-0">Alerts & Notifications</h5>
+                <small class="text-muted">Recent system alerts and warnings</small>
+            </div>
+            <div class="card-body">
+                {% if alerts %}
+                <div class="alerts-list">
+                    {% for alert in alerts %}
+                    <div class="alert-card mb-3 p-3 border-l-4 {% if alert.severity == 'critical' %}border-danger bg-light-danger{% elif alert.severity == 'warning' %}border-warning bg-light-warning{% else %}border-info bg-light-info{% endif %}">
+                        <div class="d-flex justify-content-between align-items-start">
+                            <div>
+                                <h6 class="mb-1">{{ alert.title }}</h6>
+                                <p class="mb-1 text-sm">{{ alert.message }}</p>
+                                <small class="text-muted">{{ alert.created_at.strftime('%Y-%m-%d %H:%M') }}</small>
+                            </div>
+                            <div>
+                                {% if alert.severity == 'critical' %}
+                                <span class="badge bg-danger">Critical</span>
+                                {% elif alert.severity == 'warning' %}
+                                <span class="badge bg-warning text-dark">Warning</span>
+                                {% else %}
+                                <span class="badge bg-info">Info</span>
+                                {% endif %}
+                                {% if alert.is_acknowledged %}
+                                <span class="badge bg-success ms-2">Acknowledged</span>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+                {% else %}
+                <p class="text-muted text-center py-4">No alerts recorded.</p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+.bg-light-danger { background-color: #f8d7da; }
+.bg-light-warning { background-color: #fff3cd; }
+.bg-light-info { background-color: #d1ecf1; }
+.border-l-4 { border-left: 4px solid !important; }
+</style>
+
+{% endblock %}

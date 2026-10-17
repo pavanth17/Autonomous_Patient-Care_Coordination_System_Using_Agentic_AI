@@ -1,0 +1,118 @@
+{% extends "dashboard_base.html" %}
+
+{% block title %}Appointments - CareSync AI{% endblock %}
+
+{% block sidebar %}
+<div class="sidebar-content">
+    <div class="sidebar-header">
+        <h5><i class="bi bi-calendar-check me-2"></i>Admin Panel</h5>
+    </div>
+    <nav class="sidebar-nav">
+        <a href="{{ url_for('admin_dashboard') }}" class="nav-link">
+            <i class="bi bi-speedometer2"></i>Dashboard
+        </a>
+        <a href="{{ url_for('admin_users') }}" class="nav-link">
+            <i class="bi bi-people"></i>Manage Staff
+        </a>
+        <a href="{{ url_for('admin_register') }}" class="nav-link">
+            <i class="bi bi-person-plus"></i>Register Staff
+        </a>
+        <a href="{{ url_for('admin_patients') }}" class="nav-link">
+            <i class="bi bi-person-heart"></i>All Patients
+        </a>
+        <a href="{{ url_for('admin_appointments') }}" class="nav-link active">
+            <i class="bi bi-calendar3"></i>Appointments
+        </a>
+    </nav>
+</div>
+{% endblock %}
+
+{% block dashboard_content %}
+<div class="page-header">
+    <h1><i class="bi bi-calendar3 me-2"></i>Appointment Requests</h1>
+    <p class="text-muted">Manage incoming patient appointment requests</p>
+</div>
+
+<div class="card">
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table table-hover mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th>Date Requested</th>
+                        <th>Patient</th>
+                        <th>Type</th>
+                        <th>Preferred</th>
+                        <th>Department</th>
+                        <th>Status</th>
+                        <th>Source</th>
+                        <th>Reason</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for appt in appointments %}
+                    <tr>
+                        <td>{{ appt.requested_at.strftime('%m-%d %H:%M') }}</td>
+                        <td>
+                            {% if appt.patient %}
+                            <a href="{{ url_for('patient_detail', patient_id=appt.patient.id) }}">
+                                {{ appt.patient.full_name }}
+                            </a>
+                            <br>
+                            <small class="text-muted">{{ appt.patient.email or appt.patient.phone }}</small>
+                            {% else %}
+                            Running Man (Deleted)
+                            {% endif %}
+                        </td>
+                        <td>{{ appt.appointment_type|title }}</td>
+                        <td>
+                            <span class="d-block">{{ appt.preferred_date.strftime('%Y-%m-%d') if appt.preferred_date
+                                else 'Any' }}</span>
+                            <small class="text-muted">{{ appt.preferred_time }}</small>
+                        </td>
+                        <td>{{ appt.department or 'General' }}</td>
+                        <td>
+                            {% if appt.status == 'confirmed' %}
+                            <span class="badge bg-success">Confirmed</span>
+                            {% elif appt.status == 'cancelled' %}
+                            <span class="badge bg-danger">Cancelled</span>
+                            {% else %}
+                            <span class="badge bg-warning text-dark">Pending</span>
+                            {% endif %}
+                        </td>
+                        <td>{{ appt.source }}</td>
+                        <td>
+                            <span class="text-truncate d-inline-block" style="max-width: 150px;"
+                                title="{{ appt.notes }}">
+                                {{ appt.notes or '-' }}
+                            </span>
+                        </td>
+                        <td>
+                            {% if appt.status == 'pending' %}
+                            <form action="{{ url_for('confirm_appointment', appt_id=appt.id) }}" method="POST"
+                                class="d-inline">
+                                <button type="submit" class="btn btn-sm btn-success" title="Confirm">
+                                    <i class="bi bi-check-lg"></i>
+                                </button>
+                            </form>
+                            {% endif %}
+                            <button class="btn btn-sm btn-outline-secondary" title="Details">
+                                <i class="bi bi-three-dots"></i>
+                            </button>
+                        </td>
+                    </tr>
+                    {% else %}
+                    <tr>
+                        <td colspan="9" class="text-center py-4">
+                            <i class="bi bi-calendar-x text-muted" style="font-size: 2rem;"></i>
+                            <p class="mt-2 text-muted">No appointment requests found.</p>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}

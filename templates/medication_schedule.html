@@ -1,0 +1,200 @@
+{% extends "dashboard_base.html" %}
+
+{% block title %}Schedule Medication - {{ patient.full_name }}{% endblock %}
+
+{% block content %}
+<div class="content-header">
+    <h1>Schedule New Medication</h1>
+    <p class="text-muted">Patient: {{ patient.full_name }} | Room {{ patient.room_number }}, Bed {{ patient.bed_number
+        }}</p>
+</div>
+
+<div class="row">
+    <div class="col-lg-8">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">Medication Details</h5>
+            </div>
+            <div class="card-body">
+                <form method="POST" action="{{ url_for('medication_schedule', patient_id=patient.id) }}">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="form-group">
+                                <label for="name">Medication Name <span class="text-danger">*</span></label>
+                                <input type="text" class="form-control" id="name" name="name" required
+                                    placeholder="e.g., Lisinopril, Metformin">
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="form-group">
+                                <label for="dosage">Dosage <span class="text-danger">*</span></label>
+                                <input type="text" class="form-control" id="dosage" name="dosage" required
+                                    placeholder="e.g., 10mg, 500mg">
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="form-group">
+                                <label for="frequency">Frequency <span class="text-danger">*</span></label>
+                                <select class="form-control" id="frequency" name="frequency" required>
+                                    <option value="">Select Frequency</option>
+                                    <option value="A tablet before breakfast at mrng">A tablet before breakfast at mrng
+                                    </option>
+                                    <option value="A tablet only afternoon after meals">A tablet only afternoon after
+                                        meals</option>
+                                    <option value="A tablet 3 times a day after food">A tablet 3 times a day after food
+                                    </option>
+                                    <option value="Once daily">Once daily</option>
+                                    <option value="Twice daily">Twice daily</option>
+                                    <option value="Every 4 hours">Every 4 hours</option>
+                                    <option value="As needed">As needed (PRN)</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="form-group">
+                                <label for="route">Route of Administration</label>
+                                <select class="form-control" id="route" name="route">
+                                    <option value="">Select Route</option>
+                                    <option value="Oral">Oral</option>
+                                    <option value="IV">Intravenous (IV)</option>
+                                    <option value="IM">Intramuscular (IM)</option>
+                                    <option value="Subcutaneous">Subcutaneous</option>
+                                    <option value="Topical">Topical</option>
+                                    <option value="Inhalation">Inhalation</option>
+                                    <option value="Sublingual">Sublingual</option>
+                                    <option value="Rectal">Rectal</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="notes">Notes / Special Instructions</label>
+                        <textarea class="form-control" id="notes" name="notes" rows="3"
+                            placeholder="e.g., Take with food, Avoid grapefruit juice"></textarea>
+                    </div>
+
+                    <div class="form-group mt-4">
+                        <button type="submit" class="btn btn-primary">
+                            <i data-feather="plus-circle"></i> Schedule Medication
+                        </button>
+                        <a href="{{ url_for('patient_medications', patient_id=patient.id) }}" class="btn btn-secondary">
+                            Cancel
+                        </a>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-lg-4">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">Patient Info</h5>
+            </div>
+            <div class="card-body">
+                <dl>
+                    <dt>Full Name</dt>
+                    <dd>{{ patient.full_name }}</dd>
+
+                    <dt>Patient ID</dt>
+                    <dd>{{ patient.patient_id }}</dd>
+
+                    <dt>Age</dt>
+                    <dd>{{ patient.age }} years</dd>
+
+                    <dt>Blood Type</dt>
+                    <dd>{{ patient.blood_type or 'Unknown' }}</dd>
+
+                    <dt>Room/Bed</dt>
+                    <dd>{{ patient.room_number }}/{{ patient.bed_number }}</dd>
+
+                    <dt>Status</dt>
+                    <dd>
+                        <span
+                            class="badge badge-{{ 'danger' if patient.status == 'emergency' else 'warning' if patient.status == 'icu' else 'primary' }}">
+                            {{ patient.status|upper }}
+                        </span>
+                    </dd>
+                </dl>
+            </div>
+        </div>
+
+        <div class="card mt-3">
+            <div class="card-header">
+                <h5 class="mb-0">Current Medications</h5>
+            </div>
+            <div class="card-body">
+                {% if patient.medications %}
+                <div class="table-responsive">
+                    <table class="table table-sm table-hover">
+                        <thead>
+                            <tr>
+                                <th>Medicine</th>
+                                <th>Dosage</th>
+                                <th>Frequency</th>
+                                <th>Route</th>
+                                <th>Action</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for med in patient.medications if med.is_active %}
+                            <tr>
+                                <td><strong>{{ med.name }}</strong></td>
+                                <td>{{ med.dosage }}</td>
+                                <td>{{ med.frequency }}</td>
+                                <td>{{ med.route or '-' }}</td>
+                                <td>
+                                    <form action="{{ url_for('delete_medication', medication_id=med.id) }}"
+                                        method="POST"
+                                        onsubmit="return confirm('Are you sure you want to delete this medication?');">
+                                        <button type="submit" class="btn btn-sm btn-danger">
+                                            <i data-feather="trash-2"></i>
+                                        </button>
+                                    </form>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% else %}
+                <p class="text-muted mb-0">No current medications</p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    dl dt {
+        font-weight: 600;
+        color: #6c757d;
+        font-size: 0.85rem;
+        margin-top: 12px;
+    }
+
+    dl dd {
+        margin-bottom: 0;
+        color: #1a1a2e;
+    }
+
+    .current-meds-list {
+        list-style: none;
+        padding: 0;
+        margin: 0;
+    }
+
+    .current-meds-list li {
+        padding: 8px 0;
+        border-bottom: 1px solid #eee;
+    }
+
+    .current-meds-list li:last-child {
+        border-bottom: none;
+    }
+</style>
+{% endblock %}

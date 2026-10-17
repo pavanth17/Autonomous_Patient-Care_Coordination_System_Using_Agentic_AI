@@ -1,0 +1,167 @@
+{% extends "dashboard_base.html" %}
+
+{% block title %}Create Handoff Report{% endblock %}
+
+{% block content %}
+<div class="content-header">
+    <h1>Create Handoff Report</h1>
+    <p class="text-muted">Transfer patient care information to incoming staff</p>
+</div>
+
+<div class="row">
+    <div class="col-lg-8">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">Handoff Details</h5>
+            </div>
+            <div class="card-body">
+                <form method="POST" action="{{ url_for('create_handoff') }}">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="form-group">
+                                <label>Incoming Staff Member <span class="text-danger">*</span></label>
+                                <select name="incoming_staff_id" class="form-control" required>
+                                    <option value="">Select Staff</option>
+                                    {% for member in incoming_staff_list %}
+                                    <option value="{{ member.id }}">{{ member.full_name }} ({{ member.staff_id }})</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="form-group">
+                                <label>Patient (Optional)</label>
+                                <select name="patient_id" class="form-control">
+                                    <option value="">General Handoff (No Specific Patient)</option>
+                                    {% for patient in patients %}
+                                    <option value="{{ patient.id }}">{{ patient.full_name }} - Room {{ patient.room_number }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Summary <span class="text-danger">*</span></label>
+                        <textarea name="summary" class="form-control" rows="4" required 
+                            placeholder="Provide a comprehensive summary of the patient's current status, recent changes, and ongoing treatment..."></textarea>
+                        <small class="text-muted">Include key information about patient condition, recent vitals, and treatment progress</small>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Critical Notes</label>
+                        <textarea name="critical_notes" class="form-control" rows="3" 
+                            placeholder="Any critical issues or concerns that require immediate attention..."></textarea>
+                        <small class="text-muted">Highlight any urgent issues, abnormal findings, or potential emergencies</small>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Pending Tasks</label>
+                        <textarea name="pending_tasks" class="form-control" rows="3" 
+                            placeholder="List any pending tasks, upcoming medications, or scheduled procedures..."></textarea>
+                        <small class="text-muted">Include medication due times, scheduled tests, and follow-up items</small>
+                    </div>
+
+                    <div class="form-group mt-4">
+                        <button type="submit" class="btn btn-primary">
+                            <i data-feather="send"></i> Submit Handoff
+                        </button>
+                        <a href="{{ url_for('shift_management') }}" class="btn btn-secondary">
+                            Cancel
+                        </a>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-lg-4">
+        <div class="card mb-3">
+            <div class="card-header">
+                <h5 class="mb-0">Handoff Guidelines</h5>
+            </div>
+            <div class="card-body">
+                <div class="guideline-item">
+                    <i data-feather="check-circle" class="text-success"></i>
+                    <span>Include all relevant patient information</span>
+                </div>
+                <div class="guideline-item">
+                    <i data-feather="check-circle" class="text-success"></i>
+                    <span>Highlight any critical or time-sensitive issues</span>
+                </div>
+                <div class="guideline-item">
+                    <i data-feather="check-circle" class="text-success"></i>
+                    <span>Document pending tasks with specific times</span>
+                </div>
+                <div class="guideline-item">
+                    <i data-feather="check-circle" class="text-success"></i>
+                    <span>Note any changes from the normal care plan</span>
+                </div>
+                <div class="guideline-item">
+                    <i data-feather="check-circle" class="text-success"></i>
+                    <span>Include family communication updates</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">Your Patients</h5>
+            </div>
+            <div class="card-body">
+                {% if patients %}
+                <ul class="patient-list">
+                    {% for patient in patients %}
+                    <li>
+                        <strong>{{ patient.full_name }}</strong><br>
+                        <small class="text-muted">Room {{ patient.room_number }} - 
+                            <span class="badge badge-{{ 'danger' if patient.status == 'emergency' else 'warning' if patient.status == 'icu' else 'primary' }}">
+                                {{ patient.status|upper }}
+                            </span>
+                        </small>
+                    </li>
+                    {% endfor %}
+                </ul>
+                {% else %}
+                <p class="text-muted mb-0">No patients assigned</p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+.guideline-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 8px 0;
+    border-bottom: 1px solid #eee;
+}
+
+.guideline-item:last-child {
+    border-bottom: none;
+}
+
+.guideline-item i {
+    flex-shrink: 0;
+    width: 18px;
+    height: 18px;
+}
+
+.patient-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+
+.patient-list li {
+    padding: 10px 0;
+    border-bottom: 1px solid #eee;
+}
+
+.patient-list li:last-child {
+    border-bottom: none;
+}
+</style>
+{% endblock %}

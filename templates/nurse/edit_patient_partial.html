@@ -1,0 +1,84 @@
+<div class="card">
+    <div class="card-header">
+        <h6 class="mb-0">Editing: {{ patient.full_name }} ({{ patient.patient_id }})</h6>
+    </div>
+    <div class="card-body">
+        <form id="editPatientForm" action="{{ url_for('update_patient_record', patient_id=patient.id) }}" method="POST">
+            <div class="row mb-3">
+                <div class="col-md-6">
+                    <label class="form-label">Diagnosis</label>
+                    <textarea name="diagnosis" class="form-control" rows="2">{{ patient.diagnosis or '' }}</textarea>
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label">Notes</label>
+                    <textarea name="notes" class="form-control" rows="2">{{ patient.notes or '' }}</textarea>
+                </div>
+            </div>
+
+            <div class="row mb-3">
+                <div class="col-md-4">
+                    <label class="form-label">Room Number</label>
+                    <input type="text" name="room_number" class="form-control" value="{{ patient.room_number or '' }}">
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label">Bed Number</label>
+                    <input type="text" name="bed_number" class="form-control" value="{{ patient.bed_number or '' }}">
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label">Status</label>
+                    <select name="status" class="form-select">
+                        <option value="admitted" {% if patient.status=='admitted' %}selected{% endif %}>Admitted
+                        </option>
+                        <option value="icu" {% if patient.status=='icu' %}selected{% endif %}>ICU</option>
+                        <option value="emergency" {% if patient.status=='emergency' %}selected{% endif %}>Emergency
+                        </option>
+                        <option value="discharged" {% if patient.status=='discharged' %}selected{% endif %}>Discharged
+                        </option>
+                    </select>
+                </div>
+            </div>
+
+            <button type="submit" class="btn btn-success">
+                <i class="bi bi-save me-1"></i>Save Changes
+            </button>
+        </form>
+    </div>
+</div>
+
+<script>
+    document.getElementById('editPatientForm').addEventListener('submit', function (e) {
+        e.preventDefault();
+        const form = this;
+        const formData = new FormData(form);
+
+        // Show loading state
+        const btn = form.querySelector('button[type="submit"]');
+        const originalText = btn.innerHTML;
+        btn.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Saving...';
+        btn.disabled = true;
+
+        fetch(form.action, {
+            method: 'POST',
+            body: formData
+        })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    // Show toast or alert
+                    alert('Patient record updated successfully!');
+                    // Reload page to reflect changes
+                    location.reload();
+                } else {
+                    alert('Error: ' + data.error);
+                    btn.innerHTML = originalText;
+                    btn.disabled = false;
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('An error occurred while saving.');
+                btn.innerHTML = originalText;
+                btn.disabled = false;
+            });
+    });
+</script>

@@ -1,0 +1,111 @@
+{% extends "dashboard_base.html" %}
+
+{% block title %}Emergency Rerouting Logs - CareSync AI{% endblock %}
+
+{% block sidebar %}
+<div class="sidebar-content">
+    <div class="sidebar-header">
+        <h5><i class="bi bi-shield-check me-2"></i>Admin Panel</h5>
+    </div>
+    <nav class="sidebar-nav">
+        <a href="{{ url_for('admin_dashboard') }}" class="nav-link">
+            <i class="bi bi-speedometer2"></i>Dashboard
+        </a>
+        <a href="{{ url_for('admin_users') }}" class="nav-link">
+            <i class="bi bi-people"></i>Manage Staff
+        </a>
+        <a href="{{ url_for('admin_register') }}" class="nav-link">
+            <i class="bi bi-person-plus"></i>Register Staff
+        </a>
+        <a href="{{ url_for('admin_patients') }}" class="nav-link">
+            <i class="bi bi-person-heart"></i>All Patients
+        </a>
+        <a href="{{ url_for('admin_rerouting_logs') }}" class="nav-link active">
+            <i class="bi bi-arrow-repeat"></i>Rerouting Logs
+        </a>
+    </nav>
+</div>
+{% endblock %}
+
+{% block dashboard_content %}
+<div class="page-header">
+    <h1><i class="bi bi-arrow-repeat me-2"></i>Emergency Rerouting Logs</h1>
+    <p class="text-muted">Automatic staff re-assignment after consecutive emergency alerts</p>
+</div>
+
+<div class="card mt-4">
+    <div class="card-header">
+        <h5><i class="bi bi-table me-2"></i>Rerouting History</h5>
+    </div>
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table table-hover mb-0">
+                <thead>
+                    <tr>
+                        <th>Time</th>
+                        <th>Patient</th>
+                        <th>Previous Team</th>
+                        <th>New Team</th>
+                        <th>Reason</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for log in logs %}
+                    <tr>
+                        <td>
+                            <div class="d-flex flex-column">
+                                <span class="fw-bold">{{ log.timestamp.strftime('%Y-%m-%d') }}</span>
+                                <small class="text-muted">{{ log.timestamp.strftime('%H:%M:%S') }}</small>
+                            </div>
+                        </td>
+                        <td>
+                            <a href="{{ url_for('patient_detail', patient_id=log.patient_id) }}" class="text-decoration-none">
+                                {{ log.patient.full_name }}
+                            </a>
+                            <br>
+                            <small class="text-muted">Room {{ log.patient.room_number }}</small>
+                        </td>
+                        <td>
+                            <div class="staff-cell">
+                                <small class="text-muted d-block">Doctor</small>
+                                <span>Dr. {{ log.old_doctor.full_name if log.old_doctor else 'None' }}</span>
+                                <small class="text-muted d-block mt-1">Nurse</small>
+                                <span>{{ log.old_nurse.full_name if log.old_nurse else 'None' }}</span>
+                            </div>
+                        </td>
+                        <td>
+                            <div class="staff-cell">
+                                <small class="text-muted d-block">Doctor</small>
+                                <span class="text-success">Dr. {{ log.new_doctor.full_name if log.new_doctor else 'No change' }}</span>
+                                <small class="text-muted d-block mt-1">Nurse</small>
+                                <span class="text-success">{{ log.new_nurse.full_name if log.new_nurse else 'No change' }}</span>
+                            </div>
+                        </td>
+                        <td>
+                            <span class="badge bg-danger">2 Consecutive Emergency Alerts</span>
+                            <br>
+                            <small class="text-muted">Alert IDs: {{ log.triggering_alert_ids }}</small>
+                        </td>
+                    </tr>
+                    {% else %}
+                    <tr>
+                        <td colspan="5" class="text-center py-5">
+                            <i class="bi bi-info-circle me-2"></i>No rerouting logs found.
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<style>
+    .staff-cell {
+        font-size: 0.9rem;
+    }
+    .staff-cell span {
+        font-weight: 500;
+    }
+</style>
+{% endblock %}

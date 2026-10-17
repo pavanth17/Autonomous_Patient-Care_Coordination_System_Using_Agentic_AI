@@ -1,0 +1,530 @@
+{% extends "dashboard_base.html" %}
+
+{% block title %}Nurse Dashboard - CareSync AI{% endblock %}
+
+{% block sidebar %}
+<div class="sidebar-content">
+    <div class="sidebar-header">
+        <h5><i class="bi bi-clipboard2-pulse me-2"></i>Nurse Panel</h5>
+    </div>
+    <nav class="sidebar-nav">
+        <a href="{{ url_for('nurse_dashboard') }}" class="nav-link active">
+            <i class="bi bi-speedometer2"></i>My Patients
+        </a>
+    </nav>
+
+    <div class="sidebar-section mt-4">
+        <h6 class="text-muted text-uppercase small">Quick Stats</h6>
+        <div class="quick-stat">
+            <span>{{ patients|length }}</span>
+            <label>Assigned Patients</label>
+        </div>
+        <div class="quick-stat">
+            <span class="text-warning">{{ medications_due|length }}</span>
+            <label>Medications Due</label>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block dashboard_content %}
+{% set critical_alerts = active_alerts|selectattr('severity', 'equalto', 'critical')|list %}
+{% if critical_alerts %}
+<div class="alert alert-danger alert-banner mb-4">
+    <div class="d-flex align-items-center">
+        <i class="bi bi-exclamation-octagon-fill fs-4 me-3"></i>
+        <div>
+            <strong>{{ critical_alerts|length }} Critical Alert(s)!</strong>
+            <span class="ms-2">Immediate attention required.</span>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+<div class="page-header">
+    <h1><i class="bi bi-clipboard2-pulse me-2"></i>My Patients</h1>
+    <p class="text-muted">Patient monitoring and medication tracking - {{ staff.full_name }}</p>
+</div>
+
+<!-- Notifications Section -->
+<div id="notificationsContainer" style="display: none;">
+    <div class="card mb-4 border-primary">
+        <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
+            <h5 class="mb-0"><i class="bi bi-bell-fill me-2"></i>Notifications <span class="badge bg-warning ms-2" id="notificationCount">0</span></h5>
+            <button type="button" class="btn btn-sm btn-light" id="clearNotificationsBtn">Clear All</button>
+        </div>
+        <div class="card-body p-0" id="notificationsBody" style="max-height: 400px; overflow-y: auto;">
+            <!-- Notifications will be loaded here -->
+        </div>
+    </div>
+</div>
+
+<!-- Modify Patient Records Section -->
+<div class="card mb-4 border-info">
+    <div class="card-header bg-info text-white d-flex justify-content-between align-items-center">
+        <h5 class="mb-0"><i class="bi bi-pencil-square me-2"></i>Modify Patient Records</h5>
+        <button class="btn btn-sm btn-light" type="button" data-bs-toggle="collapse"
+            data-bs-target="#modifyPatientCollapse">
+            <i class="bi bi-chevron-down"></i>
+        </button>
+    </div>
+    <div class="collapse show" id="modifyPatientCollapse">
+        <div class="card-body">
+            <form id="patientLookupForm" class="row g-3 align-items-center">
+                <div class="col-auto">
+                    <label for="lookupPatientId" class="col-form-label">Patient ID:</label>
+                </div>
+                <div class="col-auto">
+                    <input type="text" id="lookupPatientId" class="form-control" placeholder="PAT0001">
+                </div>
+                <div class="col-auto">
+                    <button type="submit" class="btn btn-primary">Search</button>
+                </div>
+            </form>
+
+            <div id="patientEditContainer" class="mt-4" style="display: none;">
+                <!-- Patient edit form will be loaded here via AJAX -->
+            </div>
+        </div>
+    </div>
+</div>
+
+{% if medications_due %}
+<div class="card mb-4 border-warning">
+    <div class="card-header bg-warning text-dark">
+        <h5 class="mb-0"><i class="bi bi-capsule me-2"></i>Medications Due Now</h5>
+    </div>
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table table-hover mb-0">
+                <thead>
+                    <tr>
+                        <th>Patient</th>
+                        <th>Room</th>
+                        <th>Medication</th>
+                        <th>Dosage</th>
+                        <th>Route</th>
+                        <th>Due Time</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for med in medications_due[:5] %}
+                    <tr>
+                        <td>{{ med.patient.full_name }}</td>
+                        <td>{{ med.patient.room_number or '-' }}</td>
+                        <td><a href="javascript:void(0)" onclick="showMedicineDetails('{{ med.name }}')" class="fw-bold text-decoration-none text-primary">{{ med.name }}</a></td>
+                        <td>{{ med.dosage }}</td>
+                        <td>{{ med.route or 'oral' }}</td>
+                        <td>
+                            <span class="badge bg-warning text-dark">
+                                {{ med.next_due.strftime('%H:%M') if med.next_due else 'Now' }}
+                            </span>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+<div class="patients-grid" id="patientsGrid">
+    {% for patient in patients %}
+    <div class="patient-card patient-{{ patient.latest_vitals.status if patient.latest_vitals else 'normal' }}"
+        data-patient-id="{{ patient.id }}">
+        <div class="patient-header">
+            <div class="patient-info">
+                <h5>{{ patient.full_name }}</h5>
+                <span class="patient-id">{{ patient.patient_id }}</span>
+            </div>
+            <span class="status-badge status-{{ patient.status }}">
+                {{ patient.status|upper }}
+            </span>
+        </div>
+
+        <div class="patient-location">
+            <i class="bi bi-geo-alt"></i>
+            Room {{ patient.room_number or '-' }}, Bed {{ patient.bed_number or '-' }}
+        </div>
+
+        {% if patient.latest_vitals %}
+        <div class="vitals-grid">
+            <div
+                class="vital-item vital-{{ 'critical' if patient.latest_vitals.heart_rate and (patient.latest_vitals.heart_rate < 55 or patient.latest_vitals.heart_rate > 85) else 'warning' if patient.latest_vitals.heart_rate and (patient.latest_vitals.heart_rate < 60 or patient.latest_vitals.heart_rate > 80) else 'normal' }}">
+                <i class="bi bi-heart-pulse"></i>
+                <div class="vital-value" data-vital="heart_rate">{{ patient.latest_vitals.heart_rate|int if
+                    patient.latest_vitals.heart_rate else '--' }}</div>
+                <div class="vital-label">bpm</div>
+            </div>
+            <div
+                class="vital-item vital-{{ 'critical' if patient.latest_vitals.blood_pressure_systolic and (patient.latest_vitals.blood_pressure_systolic < 90 or patient.latest_vitals.blood_pressure_systolic > 160) else 'warning' if patient.latest_vitals.blood_pressure_systolic and (patient.latest_vitals.blood_pressure_systolic < 100 or patient.latest_vitals.blood_pressure_systolic > 140) else 'normal' }}">
+                <i class="bi bi-droplet"></i>
+                <div class="vital-value" data-vital="bp">{{ patient.latest_vitals.blood_pressure_systolic|int if
+                    patient.latest_vitals.blood_pressure_systolic else 'Nill' }}/{{
+                    patient.latest_vitals.blood_pressure_diastolic|int if patient.latest_vitals.blood_pressure_diastolic
+                    else 'Nill' }}</div>
+                <div class="vital-label">mmHg</div>
+            </div>
+            <div
+                class="vital-item vital-{{ 'critical' if patient.latest_vitals.oxygen_saturation and patient.latest_vitals.oxygen_saturation < 92 else 'warning' if patient.latest_vitals.oxygen_saturation and patient.latest_vitals.oxygen_saturation < 95 else 'normal' }}">
+                <i class="bi bi-lungs"></i>
+                <div class="vital-value" data-vital="oxygen">{{ patient.latest_vitals.oxygen_saturation|int if
+                    patient.latest_vitals.oxygen_saturation else '--' }}</div>
+                <div class="vital-label">SpO2 %</div>
+            </div>
+            <div
+                class="vital-item vital-{{ 'critical' if patient.latest_vitals.temperature and (patient.latest_vitals.temperature < 95 or patient.latest_vitals.temperature > 100) else 'warning' if patient.latest_vitals.temperature and (patient.latest_vitals.temperature < 96 or patient.latest_vitals.temperature > 99) else 'normal' }}">
+                <i class="bi bi-thermometer-half"></i>
+                <div class="vital-value" data-vital="temperature">{{ '%.1f'|format(patient.latest_vitals.temperature) if
+                    patient.latest_vitals.temperature else '--' }}</div>
+                <div class="vital-label">°F</div>
+            </div>
+        </div>
+        <div class="vital-timestamp">
+            <i class="bi bi-clock"></i>
+            Last updated: <span data-vital="timestamp">{{ patient.latest_vitals.recorded_at.strftime('%H:%M:%S')
+                }}</span>
+        </div>
+        {% else %}
+        <div class="no-vitals">
+            <i class="bi bi-exclamation-circle"></i>
+            <p>No vital signs recorded</p>
+        </div>
+        {% endif %}
+
+        {% set patient_meds = patient.medications|selectattr('is_active')|list %}
+        {% if patient_meds %}
+        <div class="medication-count">
+            <i class="bi bi-capsule"></i>
+            {{ patient_meds|length }} active medication(s)
+        </div>
+        {% endif %}
+
+        <div class="patient-actions">
+            <a href="{{ url_for('patient_detail', patient_id=patient.id) }}" class="btn btn-outline-primary btn-sm">
+                <i class="bi bi-eye me-1"></i>Details
+            </a>
+            <a href="{{ url_for('patient_medications', patient_id=patient.id) }}" class="btn btn-warning btn-sm">
+                <i class="bi bi-capsule me-1"></i>Meds
+            </a>
+            <a href="{{ url_for('add_treatment', patient_id=patient.id) }}" class="btn btn-outline-secondary btn-sm">
+                <i class="bi bi-clipboard me-1"></i>Log
+            </a>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+
+{% if not patients %}
+<div class="empty-state">
+    <i class="bi bi-person-x"></i>
+    <h4>No Patients Assigned</h4>
+    <p>You don't have any patients assigned to you at the moment.</p>
+</div>
+{% endif %}
+
+{% if active_alerts %}
+<div class="card mt-4">
+    <div class="card-header">
+        <h5><i class="bi bi-bell me-2"></i>Active Alerts</h5>
+    </div>
+    <div class="card-body p-0">
+        <div class="alert-list">
+            {% for alert in active_alerts[:10] %}
+            <div class="alert-item alert-{{ alert.severity }}" data-alert-id="{{ alert.id }}"
+                data-patient-name="{{ alert.patient.full_name }}" data-room="{{ alert.patient.room_number }}"
+                data-bed="{{ alert.patient.bed_number }}">
+                <div class="alert-icon">
+                    {% if alert.severity == 'critical' %}
+                    <i class="bi bi-exclamation-octagon-fill"></i>
+                    {% else %}
+                    <i class="bi bi-exclamation-triangle-fill"></i>
+                    {% endif %}
+                </div>
+                <div class="alert-content">
+                    <h6>{{ alert.title }}</h6>
+                    <p>{{ alert.message }}</p>
+                    <small class="text-muted">{{ alert.created_at.strftime('%H:%M:%S') }}</small>
+                </div>
+                <form action="{{ url_for('acknowledge_alert', alert_id=alert.id) }}" method="POST" data-alert-id="{{ alert.id }}">
+                    <button type="submit" class="btn btn-sm btn-outline-secondary">
+                        <i class="bi bi-check"></i> Acknowledge
+                    </button>
+                </form>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+</div>
+{% endif %}
+
+<style>
+    .notification-item {
+        background: linear-gradient(135deg, #f0f7ff 0%, #ffffff 100%);
+        border-left: 4px solid #0d6efd !important;
+        transition: all 0.3s ease;
+    }
+    
+    .notification-item:hover {
+        background: linear-gradient(135deg, #e7f1ff 0%, #f5f5f5 100%);
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+    
+    .notification-item h6 {
+        color: #0d6efd;
+        font-weight: 600;
+    }
+    
+    .notification-item.acknowledge {
+        opacity: 0.6;
+        background: linear-gradient(135deg, #f0f0f0 0%, #ffffff 100%);
+    }
+    
+    #notificationsBody::-webkit-scrollbar {
+        width: 6px;
+    }
+    
+    #notificationsBody::-webkit-scrollbar-track {
+        background: #f1f1f1;
+    }
+    
+    #notificationsBody::-webkit-scrollbar-thumb {
+        background: #888;
+        border-radius: 3px;
+    }
+    
+    #notificationsBody::-webkit-scrollbar-thumb:hover {
+        background: #555;
+    }
+</style>
+
+{% endblock %}
+
+{% block scripts %}
+{{ super() }}
+<script>
+    // Load and display notifications
+    function loadNotifications() {
+        fetch('/api/nurse/notifications')
+            .then(response => response.json())
+            .then(data => {
+                if (data.success && data.count > 0) {
+                    document.getElementById('notificationsContainer').style.display = 'block';
+                    document.getElementById('notificationCount').textContent = data.count;
+                    
+                    const notificationsBody = document.getElementById('notificationsBody');
+                    notificationsBody.innerHTML = '';
+                    
+                    data.notifications.forEach(notif => {
+                        const notifEl = document.createElement('div');
+                        notifEl.className = 'notification-item p-3 border-bottom';
+                        notifEl.setAttribute('data-notif-id', notif.id);
+                        notifEl.innerHTML = `
+                            <div class="d-flex justify-content-between align-items-start">
+                                <div class="flex-grow-1">
+                                    <h6 class="mb-1">
+                                        <i class="bi bi-info-circle-fill text-primary me-2"></i>${notif.title}
+                                    </h6>
+                                    <p class="mb-2 text-muted small">${notif.message}</p>
+                                    <small class="text-muted">${new Date(notif.created_at).toLocaleString()}</small>
+                                </div>
+                                <div class="ms-2">
+                                    <button type="button" class="btn btn-sm btn-outline-primary acknowledge-notif-btn" data-notif-id="${notif.id}">
+                                        <i class="bi bi-check-circle"></i> Acknowledge
+                                    </button>
+                                </div>
+                            </div>
+                        `;
+                        notificationsBody.appendChild(notifEl);
+                        
+                        // Add acknowledge click handler
+                        notifEl.querySelector('.acknowledge-notif-btn').addEventListener('click', function() {
+                            acknowledgeNotification(notif.id, notifEl);
+                        });
+                    });
+                } else {
+                    document.getElementById('notificationsContainer').style.display = 'none';
+                }
+            })
+            .catch(err => console.error('Error loading notifications:', err));
+    }
+    
+    function acknowledgeNotification(notifId, element) {
+        fetch(`/api/notification/${notifId}/acknowledge`, {
+            method: 'POST',
+            headers: {'X-Requested-With': 'XMLHttpRequest'}
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                element.style.opacity = '0.5';
+                element.querySelector('.acknowledge-notif-btn').disabled = true;
+                element.querySelector('.acknowledge-notif-btn').innerHTML = '<i class="bi bi-check2-circle"></i> Acknowledged';
+                // Reload notifications after 2 seconds
+                setTimeout(loadNotifications, 2000);
+            }
+        })
+        .catch(err => console.error('Error acknowledging notification:', err));
+    }
+    
+    // Clear all notifications
+    document.getElementById('clearNotificationsBtn')?.addEventListener('click', function() {
+        const notifElements = document.querySelectorAll('.notification-item');
+        notifElements.forEach(el => {
+            const notifId = el.getAttribute('data-notif-id');
+            fetch(`/api/notification/${notifId}/acknowledge`, {
+                method: 'POST',
+                headers: {'X-Requested-With': 'XMLHttpRequest'}
+            });
+        });
+        setTimeout(loadNotifications, 1000);
+    });
+    
+    document.addEventListener('DOMContentLoaded', function () {
+        // Load notifications on page load
+        loadNotifications();
+        // Refresh notifications every 10 seconds
+        setInterval(loadNotifications, 10000);
+        
+        // Check if there are critical alerts and show popup + beep for nurse
+        const alertElements = document.querySelectorAll('.alert-item');
+
+        console.log('Nurse dashboard loaded. Alert elements found:', alertElements.length);
+
+        if (alertElements.length > 0) {
+            // Show emergency modal with first alert using global handler (app.js)
+            const firstAlert = alertElements[0];
+            if (firstAlert) {
+                console.log('Processing first alert:', firstAlert.dataset.alertId);
+                const alertObj = {
+                    id: firstAlert.dataset.alertId || null,
+                    severity: firstAlert.classList.contains('alert-critical') ? 'critical' : 'warning',
+                    patient_name: firstAlert.dataset.patientName || firstAlert.querySelector('h6')?.textContent || 'Patient',
+                    room: firstAlert.dataset.room || '-',
+                    bed: firstAlert.dataset.bed || '-',
+                    message: firstAlert.querySelector('p')?.textContent || 'Patient requires immediate attention'
+                };
+
+                console.log('Alert object:', alertObj);
+                if (window.showEmergencyAlert) {
+                    console.log('Calling global showEmergencyAlert');
+                    window.showEmergencyAlert(alertObj);
+                } else {
+                    console.error('window.showEmergencyAlert not found');
+                }
+            }
+        }
+
+        // Patient Lookup Handler
+        const lookupForm = document.getElementById('patientLookupForm');
+        if (lookupForm) {
+            lookupForm.addEventListener('submit', function (e) {
+                e.preventDefault();
+                const patientId = document.getElementById('lookupPatientId').value.trim();
+                const container = document.getElementById('patientEditContainer');
+
+                if (!patientId) {
+                    alert('Please enter a Patient ID');
+                    return;
+                }
+
+                container.style.display = 'block';
+                container.innerHTML = '<div class="text-center"><div class="spinner-border text-primary" role="status"></div></div>';
+
+                fetch(`/nurse/patient-lookup?patient_id=${encodeURIComponent(patientId)}`)
+                    .then(response => {
+                        if (!response.ok) {
+                            return response.json().then(data => { throw new Error(data.error || 'Patient not found'); });
+                        }
+                        return response.text();
+                    })
+                    .then(html => {
+                        container.innerHTML = html;
+                        // Execute scripts in the returned HTML (if any)
+                        const scripts = container.querySelectorAll('script');
+                        scripts.forEach(script => {
+                            const newScript = document.createElement('script');
+                            newScript.textContent = script.textContent;
+                            document.body.appendChild(newScript);
+                        });
+                    })
+                    .catch(error => {
+                        container.innerHTML = `<div class="alert alert-danger">${error.message}</div>`;
+                    });
+            });
+        }
+    });
+
+    // Trigger emergency alert popup 30 seconds after dashboard loads (only once per session)
+    window.addEventListener('load', function() {
+        const alertTriggered = sessionStorage.getItem('emergencyAlertTriggered');
+        if (!alertTriggered) {
+            setTimeout(function() {
+                fetch('/api/trigger-emergency-alert', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-Requested-With': 'XMLHttpRequest'
+                    }
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        sessionStorage.setItem('emergencyAlertTriggered', 'true');
+                        // Show popup alert
+                        showEmergencyPopup({
+                            severity: data.severity,
+                            patient_name: data.patient_name,
+                            message: data.message,
+                            alert_id: data.alert_id
+                        });
+                        // Reload alerts to show in table
+                        location.reload();
+                    }
+                })
+                .catch(err => console.error('Error triggering alert:', err));
+            }, 30000); // 30 seconds
+        }
+    });
+
+    function showEmergencyPopup(alert) {
+        const title = alert.severity === 'critical' ? '🚨 CRITICAL EMERGENCY ALERT!' : '⚠️ EMERGENCY ALERT';
+        const message = `
+            <strong>${alert.patient_name}</strong><br>
+            <p>${alert.message}</p>
+        `;
+        
+        // Create modal if it doesn't exist
+        let modal = document.getElementById('emergencyAlertModal');
+        if (!modal) {
+            const modalHTML = `
+                <div class="modal fade" id="emergencyAlertModal" tabindex="-1" data-bs-backdrop="static" data-bs-keyboard="false">
+                    <div class="modal-dialog modal-lg modal-dialog-centered">
+                        <div class="modal-content bg-danger text-white">
+                            <div class="modal-header border-0">
+                                <h5 class="modal-title" id="emergencyTitle"></h5>
+                                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                            </div>
+                            <div class="modal-body" id="emergencyMessage"></div>
+                            <div class="modal-footer border-0">
+                                <button type="button" class="btn btn-light" data-bs-dismiss="modal">Acknowledge</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+            document.body.insertAdjacentHTML('beforeend', modalHTML);
+            modal = document.getElementById('emergencyAlertModal');
+        }
+        
+        document.getElementById('emergencyTitle').textContent = title;
+        document.getElementById('emergencyMessage').innerHTML = message;
+        
+        const bsModal = new bootstrap.Modal(modal);
+        bsModal.show();
+
+        // Trigger multilingual voice alert
+    }
+</script>
+{% endblock %}

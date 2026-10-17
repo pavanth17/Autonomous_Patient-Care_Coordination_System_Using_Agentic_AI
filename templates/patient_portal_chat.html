@@ -1,0 +1,827 @@
+{% extends "patient_portal_base.html" %}
+
+{% block head %}
+<style>
+    /* Glassmorphism Container */
+    .chat-container {
+        height: calc(100vh - 140px);
+        /* Increased available space */
+        display: flex;
+        flex-direction: column;
+        background: rgba(255, 255, 255, 0.95);
+        backdrop-filter: blur(12px);
+        -webkit-backdrop-filter: blur(12px);
+        border: 1px solid rgba(255, 255, 255, 0.5);
+        border-radius: 20px;
+        box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.15);
+        overflow: hidden;
+        transition: all 0.3s ease;
+    }
+
+    /* Modern Gradient Header */
+    .chat-header {
+        padding: 15px 20px;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.3);
+        background: linear-gradient(135deg, #2563eb 0%, #3b82f6 50%, #60a5fa 100%);
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        flex-wrap: nowrap;
+        gap: 10px;
+        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+        z-index: 10;
+    }
+
+    .chat-header h5 {
+        margin: 0;
+        color: white;
+        font-weight: 700;
+        font-size: 1.25rem;
+        text-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+        display: flex;
+        align-items: center;
+        gap: 10px;
+    }
+
+    .chat-header small {
+        color: rgba(255, 255, 255, 0.9);
+        font-size: 0.85rem;
+        margin-left: 2px;
+        font-weight: 500;
+    }
+
+    .language-selector {
+        display: flex;
+        gap: 8px;
+        align-items: center;
+        flex-wrap: nowrap;
+        justify-content: flex-end;
+        background: rgba(255, 255, 255, 0.1);
+        padding: 4px;
+        border-radius: 50px;
+        border: 1px solid rgba(255, 255, 255, 0.2);
+    }
+
+    .language-selector label {
+        margin: 0;
+        cursor: pointer;
+    }
+
+    .language-btn {
+        padding: 6px 14px !important;
+        font-size: 0.85rem !important;
+        border-radius: 20px !important;
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
+        border: 1px solid transparent !important;
+        color: rgba(255, 255, 255, 0.9) !important;
+        background-color: transparent !important;
+        font-weight: 500;
+        white-space: nowrap;
+    }
+
+    .language-btn:hover {
+        background-color: rgba(255, 255, 255, 0.2) !important;
+        color: white !important;
+        transform: translateY(-1px);
+    }
+
+    .language-btn.active {
+        background-color: white !important;
+        color: #2563eb !important;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1) !important;
+        font-weight: 700;
+        transform: scale(1.05);
+    }
+
+    /* Delete Chat Button - Danger theme */
+    .btn-delete-chat {
+        padding: 8px 16px !important;
+        font-size: 0.9rem !important;
+        border-radius: 20px !important;
+        background-color: rgba(220, 38, 38, 0.85) !important;
+        /* Red-600 */
+        border: 1px solid rgba(255, 255, 255, 0.3) !important;
+        color: white !important;
+        transition: all 0.2s !important;
+        font-weight: 600;
+        margin-left: 10px;
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        backdrop-filter: blur(4px);
+    }
+
+    .btn-delete-chat:hover {
+        background-color: rgba(220, 38, 38, 1) !important;
+        box-shadow: 0 4px 12px rgba(220, 38, 38, 0.3) !important;
+        transform: translateY(-1px);
+    }
+
+    .chat-wrapper {
+        display: flex;
+        flex-direction: column;
+        flex: 1;
+        overflow: hidden;
+        background: rgba(243, 244, 246, 0.6);
+        /* Very light gray */
+        position: relative;
+    }
+
+    .messages-container {
+        flex: 1;
+        overflow-y: auto;
+        padding: 24px;
+        display: flex;
+        flex-direction: column;
+        gap: 18px;
+        scroll-behavior: smooth;
+    }
+
+    .message {
+        display: flex;
+        flex-direction: column;
+        max-width: 80%;
+        width: fit-content;
+        /* Critical fix for bubble size */
+        animation: fadeIn 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    .message.patient {
+        align-self: flex-end;
+        align-items: flex-end;
+    }
+
+    .message.assistant {
+        align-self: flex-start;
+        align-items: flex-start;
+    }
+
+    .message-content {
+        padding: 12px 18px;
+        border-radius: 18px;
+        line-height: 1.5;
+        position: relative;
+        word-wrap: break-word;
+        /* Legacy support */
+        overflow-wrap: break-word;
+        /* Modern wrapping */
+        white-space: pre-wrap;
+        box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
+        font-size: 0.95rem;
+
+        /* Ensure content defines width */
+        width: fit-content;
+        min-width: 0;
+        /* Prevent flex overflow */
+    }
+
+    /* Modern Patient Bubble (Blue) */
+    .patient .message-content {
+        background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+        color: white;
+        border-bottom-right-radius: 4px;
+        box-shadow: 0 4px 12px rgba(37, 99, 235, 0.2);
+    }
+
+    /* Modern Assistant Bubble (White/Glass) */
+    .assistant .message-content {
+        background: white;
+        color: #1f2937;
+        border: 1px solid rgba(229, 231, 235, 0.8);
+        border-bottom-left-radius: 4px;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+    }
+
+    .message-time {
+        font-size: 0.7rem;
+        color: #9ca3af;
+        margin-top: 6px;
+        font-weight: 500;
+        padding: 0 4px;
+    }
+
+    /* Enhanced Empty State */
+    .empty-state {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        height: 100%;
+        color: #6b7280;
+        text-align: center;
+        animation: fadeIn 0.5s ease-out;
+        padding: 20px;
+    }
+
+    .empty-state-icon {
+        background: linear-gradient(135deg, #dbeafe 0%, #eff6ff 100%);
+        width: 100px;
+        height: 100px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin-bottom: 20px;
+        box-shadow: 0 8px 24px rgba(59, 130, 246, 0.15);
+    }
+
+    .empty-state-icon i {
+        font-size: 4rem;
+        background: linear-gradient(135deg, #2563eb 0%, #3b82f6 100%);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+    }
+
+    .empty-state h5 {
+        color: #1f2937;
+        font-weight: 700;
+        margin-bottom: 10px;
+        font-size: 1.5rem;
+    }
+
+    .empty-state p {
+        color: #6b7280;
+        margin: 5px 0;
+        font-size: 1.05rem;
+    }
+
+    /* Input Area */
+    .input-area {
+        padding: 15px 20px;
+        border-top: 1px solid rgba(0, 0, 0, 0.05);
+        display: flex;
+        gap: 12px;
+        background: white;
+        align-items: center;
+        box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.02);
+    }
+
+    .input-area input {
+        border-radius: 25px;
+        padding: 12px 20px !important;
+        border: 2px solid #e5e7eb;
+        background: #f9fafb;
+        transition: all 0.2s;
+        box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.02);
+    }
+
+    .input-area input:focus {
+        background: white;
+        border-color: #3b82f6;
+        box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.1);
+        outline: none;
+    }
+
+    .input-area button {
+        border-radius: 50%;
+        width: 48px;
+        height: 48px;
+        padding: 0 !important;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: linear-gradient(135deg, #2563eb 0%, #3b82f6 100%);
+        border: none;
+        transition: transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
+        box-shadow: 0 4px 12px rgba(37, 99, 235, 0.3);
+        flex-shrink: 0;
+        /* Prevent button shrinking */
+    }
+
+    .input-area button:hover {
+        transform: scale(1.1);
+        background: linear-gradient(135deg, #1d4ed8 0%, #2563eb 100%);
+    }
+
+    .input-area button i {
+        font-size: 1.2rem;
+        margin-left: -2px;
+        /* Visual centering adjustment */
+        color: white;
+    }
+
+    /* Quick Suggestions */
+    .quick-suggestions {
+        overflow-x: auto;
+        white-space: nowrap;
+        scrollbar-width: none;
+        /* Hide scrollbar Firefox */
+        -ms-overflow-style: none;
+        /* Hide scrollbar IE/Edge */
+        padding: 12px 20px;
+        background: white;
+        border-top: 1px solid rgba(0, 0, 0, 0.05);
+        display: flex;
+        gap: 10px;
+        align-items: center;
+        /* Center vertically */
+        min-height: 54px;
+    }
+
+    .quick-suggestions::-webkit-scrollbar {
+        display: none;
+        /* Hide scrollbar Chrome/Safari */
+    }
+
+    .suggestion-chip {
+        cursor: pointer;
+        transition: all 0.25s;
+        display: inline-flex;
+        /* Use flex to center text */
+        align-items: center;
+        padding: 6px 14px !important;
+        border-radius: 20px !important;
+        border: 1px solid #e5e7eb !important;
+        background: white !important;
+        color: #4b5563 !important;
+        font-size: 0.85rem;
+        font-weight: 500;
+        white-space: nowrap;
+        user-select: none;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.02);
+    }
+
+    .suggestion-chip:hover {
+        background-color: #eff6ff !important;
+        color: #2563eb !important;
+        border-color: #bfdbfe !important;
+        transform: translateY(-2px);
+        box-shadow: 0 4px 8px rgba(37, 99, 235, 0.15);
+    }
+
+    .feedback-actions {
+        display: flex;
+        gap: 8px;
+        margin-top: 8px;
+        justify-content: flex-start;
+        opacity: 0.4;
+        transition: opacity 0.2s;
+    }
+
+    .message-content:hover .feedback-actions {
+        opacity: 1;
+    }
+
+    .btn-feedback {
+        background: none;
+        border: none;
+        font-size: 1.1rem;
+        cursor: pointer;
+        padding: 4px;
+        opacity: 0.6;
+        transition: all 0.2s;
+        filter: grayscale(100%);
+    }
+
+    .btn-feedback:hover {
+        opacity: 1;
+        transform: scale(1.2);
+        filter: grayscale(0%);
+    }
+
+    .btn-feedback.active {
+        opacity: 1;
+        transform: scale(1.2);
+        filter: grayscale(0%);
+    }
+
+    @keyframes fadeIn {
+        from {
+            opacity: 0;
+            transform: translateY(10px);
+        }
+
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+
+    @keyframes spin {
+        from {
+            transform: rotate(0deg);
+        }
+
+        to {
+            transform: rotate(360deg);
+        }
+    }
+
+    .spinner {
+        display: inline-block;
+        animation: spin 1s linear infinite;
+        margin-right: 8px;
+    }
+
+    /* Scrollbar styling */
+    .messages-container::-webkit-scrollbar {
+        width: 6px;
+    }
+
+    .messages-container::-webkit-scrollbar-track {
+        background: transparent;
+    }
+
+    .messages-container::-webkit-scrollbar-thumb {
+        background: rgba(0, 0, 0, 0.1);
+        border-radius: 10px;
+    }
+
+    .messages-container::-webkit-scrollbar-thumb:hover {
+        background: rgba(0, 0, 0, 0.2);
+    }
+</style>
+{% endblock %}
+
+{% block patient_content %}
+<div class="chat-container">
+    <!-- Chat Header with Language Selection -->
+    <div class="chat-header">
+        <div>
+            <h5>
+                <span style="font-size: 1.5rem;">🤖</span>
+                AI Health Assistant
+            </h5>
+            <small>Multilingual Support Active</small>
+        </div>
+        <div class="d-flex align-items-center">
+            <div class="language-selector me-3">
+                <input type="radio" class="btn-check" name="language" id="lang_en" value="en" checked>
+                <label class="btn btn-sm language-btn active" for="lang_en">English</label>
+
+                <input type="radio" class="btn-check" name="language" id="lang_hi" value="hi">
+                <label class="btn btn-sm language-btn" for="lang_hi">हिन्दी</label>
+
+                <input type="radio" class="btn-check" name="language" id="lang_te" value="te">
+                <label class="btn btn-sm language-btn" for="lang_te">తెలుగు</label>
+
+                <input type="radio" class="btn-check" name="language" id="lang_ta" value="ta">
+                <label class="btn btn-sm language-btn" for="lang_ta">தமிழ்</label>
+
+                <input type="radio" class="btn-check" name="language" id="lang_ml" value="ml">
+                <label class="btn btn-sm language-btn" for="lang_ml">മലയാളം</label>
+            </div>
+
+            <button id="deleteChatBtn" class="btn btn-delete-chat">
+                <i class="bi bi-trash3-fill"></i> Delete Chat
+            </button>
+        </div>
+    </div>
+
+    <!-- Chat Wrapper -->
+    <div class="chat-wrapper">
+        <div class="messages-container" id="messagesContainer">
+            {% if chat_history %}
+            {% for msg in chat_history %}
+            <div class="message {{ msg.role }}">
+                <div class="message-content">
+                    {{ msg.message }}
+                    {% if msg.role == 'assistant' %}
+                    <div class="feedback-actions" data-id="{{ msg.id }}">
+                        <button class="btn-feedback" title="Helpful"
+                            onclick="submitFeedback({{ msg.id }}, true)">👍</button>
+                        <button class="btn-feedback" title="Not helpful"
+                            onclick="submitFeedback({{ msg.id }}, false)">👎</button>
+                    </div>
+                    {% endif %}
+                </div>
+                <div class="message-time">{{ msg.created_at.strftime('%H:%M') }}</div>
+            </div>
+            {% endfor %}
+            {% else %}
+            <!-- Initial Empty State (Default English) -->
+            <div class="empty-state" id="emptyState">
+                <div class="empty-state-icon">
+                    <i class="bi bi-robot"></i>
+                </div>
+                <h5 id="greetingTitle">Hello, {{ patient.first_name }}!</h5>
+                <p id="greetingText">I'm here to help with your medical questions.</p>
+                <p><small class="text-muted" id="greetingSub">Switch languages above and start chatting!</small></p>
+            </div>
+            {% endif %}
+        </div>
+
+        <!-- Quick Suggestions -->
+        <div class="quick-suggestions">
+            <span class="suggestion-chip" onclick="useSuggestion('What are my current medications?')">
+                💊 My Medications
+            </span>
+            <span class="suggestion-chip" onclick="useSuggestion('What are my latest vital signs?')">
+                🩺 Latest Vitals
+            </span>
+            <span class="suggestion-chip" onclick="useSuggestion('Explain my diagnosis')">
+                📋 My Diagnosis
+            </span>
+            <span class="suggestion-chip" onclick="useSuggestion('Do I have any upcoming appointments?')">
+                🗓️ My Appointments
+            </span>
+            <span class="suggestion-chip" onclick="useSuggestion('What lifestyle changes should I follow?')">
+                🏃 Health Tips
+            </span>
+        </div>
+
+        <!-- Input Area -->
+        <div class="input-area">
+            <input type="text" id="messageInput" class="form-control" placeholder="Type your health question..."
+                autocomplete="off">
+            <button id="sendBtn" class="btn btn-primary">
+                <i class="bi bi-send-fill"></i>
+            </button>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    const messagesContainer = document.getElementById('messagesContainer');
+    const messageInput = document.getElementById('messageInput');
+    const sendBtn = document.getElementById('sendBtn');
+    // Using deleteChatBtn instead of newChatBtn
+    const deleteChatBtn = document.getElementById('deleteChatBtn');
+    let newChatFlag = false;
+
+    // Multilingual Greetings
+    const greetings = {
+        'en': {
+            title: "Hello, {{ patient.first_name }}!",
+            text: "I'm here to help with your medical questions.",
+            sub: "Switch languages to chat in your preferred language.",
+            placeholder: "Type your health question..."
+        },
+        'hi': {
+            title: "नमस्ते, {{ patient.first_name }}!",
+            text: "मैं आपके चिकित्सा प्रश्नों में मदद करने के लिए यहाँ हूँ।",
+            sub: "अपनी पसंदीदा भाषा में चैट शुरू करें।",
+            placeholder: "अपना स्वास्थ्य प्रश्न टाइप करें..."
+        },
+        'te': {
+            title: "నమస్కారం, {{ patient.first_name }}!",
+            text: "మీ వైద్యపరమైన సందేహాలను నివృత్తి చేయడానికి నేను ఇక్కడ ఉన్నాను.",
+            sub: "మీకు నచ్చిన భాషలో చాట్ చేయడం ప్రారంభించండి.",
+            placeholder: "మీ ఆరోగ్య ప్రశ్నను టైప్ చేయండి..."
+        },
+        'ta': {
+            title: "வணக்கம், {{ patient.first_name }}!",
+            text: "உங்கள் மருத்துவ கேள்விகளுக்கு உதவ நான் இங்கே இருக்கிறேன்.",
+            sub: "உங்கள் விருப்பமான மொழியில் அரட்டையைத் தொடங்குங்கள்.",
+            placeholder: "உங்கள் மருத்துவ கேள்வியை தட்டச்சு செய்யவும்..."
+        },
+        'ml': {
+            title: "നമസ്കാരം, {{ patient.first_name }}!",
+            text: "നിങ്ങളുടെ മെഡിക്കൽ ചോദ്യങ്ങൾക്ക് മറുപടി നൽകാൻ ഞാൻ ഇവിടെയുണ്ട്.",
+            sub: "നിങ്ങളുടെ ഇഷ്ട ഭാഷയിൽ ചാറ്റ് ആരംഭിക്കൂ.",
+            placeholder: "നിങ്ങളുടെ ആരോഗ്യ ചോദ്യം ടൈപ്പ് ചെയ്യുക..."
+        }
+    };
+
+    // Scroll to bottom on page load
+    setTimeout(() => {
+        messagesContainer.scrollTop = messagesContainer.scrollHeight;
+    }, 100);
+
+    // Language selection event listeners
+    document.querySelectorAll('input[name="language"]').forEach(radio => {
+        radio.addEventListener('change', function () {
+            // Update button styling
+            document.querySelectorAll('.language-btn').forEach(btn => {
+                btn.classList.remove('active');
+            });
+            document.querySelector(`label[for="${this.id}"]`).classList.add('active');
+
+            // Update Greeting if Empty State is visible
+            const lang = this.value;
+            updateGreeting(lang);
+        });
+    });
+
+    function updateGreeting(lang) {
+        const data = greetings[lang] || greetings['en'];
+
+        // Update Input Placeholder
+        messageInput.placeholder = data.placeholder;
+
+        // Update Empty State Text if present
+        const titleEl = document.getElementById('greetingTitle');
+        const textEl = document.getElementById('greetingText');
+        const subEl = document.getElementById('greetingSub');
+
+        if (titleEl) titleEl.textContent = data.title;
+        if (textEl) textEl.textContent = data.text;
+        if (subEl) subEl.textContent = data.sub;
+    }
+
+    function getSelectedLanguage() {
+        return document.querySelector('input[name="language"]:checked').value || 'en';
+    }
+
+    function useSuggestion(text) {
+        messageInput.value = text;
+        messageInput.focus();
+        // Optionally auto-send
+        setTimeout(() => sendMessage(), 100);
+    }
+
+    async function sendMessage() {
+        const text = messageInput.value.trim();
+        if (!text) return;
+
+        // Add user message to UI
+        addMessage(text, 'patient');
+        messageInput.value = '';
+
+        // Remove empty state if present
+        const emptyState = document.getElementById('emptyState');
+        if (emptyState) emptyState.remove();
+
+        // Show loading indicator
+        sendBtn.disabled = true;
+        const loadingId = addLoadingIndicator();
+
+        try {
+            const language = getSelectedLanguage();
+            const response = await fetch('/api/patient/{{ patient.id }}/chat', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    message: text,
+                    language: language,
+                    new_chat: newChatFlag
+                })
+            });
+
+            removeLoadingIndicator(loadingId);
+
+            if (response.ok) {
+                const data = await response.json();
+                addMessage(data.message, 'assistant', data.message_id);
+                newChatFlag = false; // Reset the flag
+            } else {
+                const errorData = await response.json();
+                addMessage('Error: ' + (errorData.error || 'Unable to get response from AI'), 'assistant');
+            }
+        } catch (error) {
+            removeLoadingIndicator(loadingId);
+            console.error('Chat error:', error);
+            addMessage('Network error. Please try again.', 'assistant');
+        } finally {
+            sendBtn.disabled = false;
+            messageInput.focus();
+        }
+    }
+
+    function addMessage(text, role, msgId = null) {
+        const messageDiv = document.createElement('div');
+        messageDiv.className = `message ${role}`;
+
+        let feedbackHtml = '';
+        if (role === 'assistant' && msgId) {
+            feedbackHtml = `
+                <div class="feedback-actions" data-id="${msgId}">
+                    <button class="btn-feedback" title="Helpful" onclick="submitFeedback(${msgId}, true)">👍</button>
+                    <button class="btn-feedback" title="Not helpful" onclick="submitFeedback(${msgId}, false)">👎</button>
+                </div>`;
+        }
+
+        // Format text with line breaks
+        let formattedText = text
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/\n/g, '<br>')
+            .replace(/\*\*/g, '<strong>')
+            .replace(/__(.*?)__/g, '<strong>$1</strong>');
+
+        const contentDiv = document.createElement('div');
+        contentDiv.className = 'message-content';
+        contentDiv.innerHTML = formattedText + feedbackHtml;
+
+        const timeDiv = document.createElement('div');
+        timeDiv.className = 'message-time';
+        timeDiv.textContent = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+
+        messageDiv.appendChild(contentDiv);
+        messageDiv.appendChild(timeDiv);
+        messagesContainer.appendChild(messageDiv);
+
+        // Scroll to bottom
+        setTimeout(() => {
+            messagesContainer.scrollTop = messagesContainer.scrollHeight;
+        }, 50);
+    }
+
+    function addLoadingIndicator() {
+        const id = 'loading-' + Date.now();
+        const messageDiv = document.createElement('div');
+        messageDiv.id = id;
+        messageDiv.className = 'message assistant';
+
+        const contentDiv = document.createElement('div');
+        contentDiv.className = 'message-content';
+        contentDiv.innerHTML = '<span class="spinner">⏳</span> Thinking...';
+
+        const timeDiv = document.createElement('div');
+        timeDiv.className = 'message-time';
+        timeDiv.textContent = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+
+        messageDiv.appendChild(contentDiv);
+        messageDiv.appendChild(timeDiv);
+        messagesContainer.appendChild(messageDiv);
+
+        // Scroll to bottom
+        messagesContainer.scrollTop = messagesContainer.scrollHeight;
+        return id;
+    }
+
+    function removeLoadingIndicator(id) {
+        const element = document.getElementById(id);
+        if (element) element.remove();
+    }
+
+    async function submitFeedback(msgId, isHelpful) {
+        try {
+            // Update UI immediately
+            const actionDiv = document.querySelector(`[data-id="${msgId}"]`);
+            if (actionDiv) {
+                const buttons = actionDiv.querySelectorAll('.btn-feedback');
+                buttons.forEach(btn => btn.classList.remove('active'));
+                if (isHelpful) {
+                    buttons[0].classList.add('active');
+                } else {
+                    buttons[1].classList.add('active');
+                }
+            }
+
+            // Send feedback to server
+            const response = await fetch(`/api/chat/feedback/${msgId}`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ is_helpful: isHelpful })
+            });
+
+            if (!response.ok) {
+                console.error('Feedback submission failed');
+            }
+        } catch (error) {
+            console.error('Feedback error:', error);
+        }
+    }
+
+    // Event Listeners
+    sendBtn.addEventListener('click', sendMessage);
+    messageInput.addEventListener('keypress', (e) => {
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            sendMessage();
+        }
+    });
+
+    // Delete Chat Handling - Safely add listener only if button exists
+    if (deleteChatBtn) {
+        deleteChatBtn.addEventListener('click', async () => {
+            if (confirm('⚠️ Are you sure you want to delete this chat history? This cannot be undone.')) {
+                try {
+                    const response = await fetch('/api/patient/{{ patient.id }}/clear-history', {
+                        method: 'POST'
+                    });
+
+                    if (response.ok) {
+                        // Clear UI
+                        messagesContainer.innerHTML = '';
+
+                        // Show empty state again with correct language
+                        const currentLang = getSelectedLanguage();
+                        const greetingData = greetings[currentLang] || greetings['en'];
+
+                        const emptyStateDiv = document.createElement('div');
+                        emptyStateDiv.className = 'empty-state';
+                        emptyStateDiv.id = 'emptyState';
+                        emptyStateDiv.innerHTML = `
+                            <div class="empty-state-icon">
+                                <i class="bi bi-robot"></i>
+                            </div>
+                            <h5 id="greetingTitle">${greetingData.title}</h5>
+                            <p id="greetingText">${greetingData.text}</p>
+                            <p><small class="text-muted" id="greetingSub">${greetingData.sub}</small></p>
+                        `;
+                        messagesContainer.appendChild(emptyStateDiv);
+
+                        // Reset flag
+                        newChatFlag = true;
+
+                        // Focus input
+                        messageInput.focus();
+                    } else {
+                        alert('Failed to delete chat history');
+                    }
+                } catch (error) {
+                    console.error('Delete history error:', error);
+                    alert('Error deleting chat history');
+                }
+            }
+        });
+    }
+
+    // Focus input on page load
+    messageInput.focus();
+</script>
+{% endblock %}

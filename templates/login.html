@@ -1,0 +1,47 @@
+{% extends "base.html" %}
+
+{% block title %}Login - CareSync AI{% endblock %}
+
+{% block body_class %}login-page{% endblock %}
+
+{% block content %}
+<div class="login-container">
+    <div class="login-card">
+        <div class="login-header">
+            <i class="bi bi-heart-pulse-fill logo-icon"></i>
+            <h1>CareSync AI</h1>
+            <p>Staff Portal Login</p>
+        </div>
+        
+        <form method="POST" action="{{ url_for('staff_login') }}" class="login-form">
+            <div class="mb-3">
+                <label for="staff_id" class="form-label">Staff ID</label>
+                <div class="input-group">
+                    <span class="input-group-text"><i class="bi bi-person-badge"></i></span>
+                    <input type="text" class="form-control" id="staff_id" name="staff_id" 
+                           placeholder="e.g., DOC0001" required autofocus>
+                </div>
+            </div>
+            
+            <div class="mb-4">
+                <label for="password" class="form-label">Password</label>
+                <div class="input-group">
+                    <span class="input-group-text"><i class="bi bi-lock"></i></span>
+                    <input type="password" class="form-control" id="password" name="password" 
+                           placeholder="Enter your password" required>
+                </div>
+            </div>
+            
+            <button type="submit" class="btn btn-primary w-100 btn-lg">
+                <i class="bi bi-box-arrow-in-right me-2"></i>Login
+            </button>
+        </form>
+        
+        <div class="login-footer">
+            <a href="{{ url_for('index') }}" class="text-muted">
+                <i class="bi bi-arrow-left me-1"></i>Back to Home
+            </a>
+        </div>
+    </div>
+</div>
+{% endblock %}

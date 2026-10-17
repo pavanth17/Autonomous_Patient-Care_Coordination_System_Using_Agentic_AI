@@ -1,0 +1,244 @@
+{% extends "dashboard_base.html" %}
+
+{% block title %}Risk Analysis - {{ patient.full_name }}{% endblock %}
+
+{% block content %}
+<div class="content-header">
+    <h1>AI Risk Analysis</h1>
+    <p class="text-muted">Patient: {{ patient.full_name }} | Room {{ patient.room_number }}, Bed {{ patient.bed_number }}</p>
+</div>
+
+<div class="row">
+    <div class="col-lg-4">
+        <div class="card mb-4">
+            <div class="card-header">
+                <h5 class="mb-0">Current Risk Assessment</h5>
+            </div>
+            <div class="card-body text-center">
+                <div class="risk-score-circle risk-{{ analysis.risk_level }}">
+                    <span class="score">{{ analysis.risk_score }}</span>
+                    <span class="label">Risk Score</span>
+                </div>
+                <h3 class="mt-3">
+                    <span class="badge badge-{{ 'danger' if analysis.risk_level in ['critical', 'high'] else 'warning' if analysis.risk_level == 'moderate' else 'success' }}">
+                        {{ analysis.risk_level|upper }}
+                    </span>
+                </h3>
+                <p class="text-muted">
+                    Analyzed at: {{ analysis.analyzed_at[:19] if analysis.analyzed_at else 'N/A' }}<br>
+                    Based on {{ analysis.vital_count }} vital records
+                </p>
+            </div>
+        </div>
+
+        <div class="card mb-4">
+            <div class="card-header">
+                <h5 class="mb-0">Predictions</h5>
+            </div>
+            <div class="card-body">
+                {% if analysis.predictions %}
+                    <ul class="prediction-list">
+                        {% for prediction in analysis.predictions %}
+                        <li class="prediction-item">
+                            <i data-feather="alert-triangle" class="text-warning"></i>
+                            {{ prediction }}
+                        </li>
+                        {% endfor %}
+                    </ul>
+                {% else %}
+                    <p class="text-muted mb-0">No immediate predictions at this time.</p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <div class="col-lg-8">
+        <div class="card mb-4">
+            <div class="card-header">
+                <h5 class="mb-0">Risk Factors Detected</h5>
+            </div>
+            <div class="card-body">
+                {% if analysis.risk_factors %}
+                <div class="risk-factors-grid">
+                    {% for factor in analysis.risk_factors %}
+                    <div class="risk-factor-card severity-{{ factor.severity }}">
+                        <div class="factor-header">
+                            <span class="factor-type">{{ factor.type|replace('_', ' ')|title }}</span>
+                            <span class="factor-severity badge badge-{{ 'danger' if factor.severity == 'critical' else 'warning' if factor.severity == 'high' else 'info' }}">
+                                {{ factor.severity|upper }}
+                            </span>
+                        </div>
+                        <p class="factor-message">{{ factor.message }}</p>
+                        <div class="factor-trend">
+                            {% if factor.trend == 'increasing' %}
+                            <i data-feather="trending-up" class="text-danger"></i> Increasing
+                            {% elif factor.trend == 'decreasing' %}
+                            <i data-feather="trending-down" class="text-primary"></i> Decreasing
+                            {% else %}
+                            <i data-feather="minus" class="text-muted"></i> Stable
+                            {% endif %}
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+                {% else %}
+                <div class="text-center py-4">
+                    <i data-feather="check-circle" class="text-success" style="width: 48px; height: 48px;"></i>
+                    <p class="mt-3 text-muted">No significant risk factors detected at this time.</p>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="mb-0">Risk Assessment History</h5>
+                <a href="{{ url_for('patient_history', patient_id=patient.id) }}" class="btn btn-sm btn-outline-primary">
+                    View Full History
+                </a>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead>
+                            <tr>
+                                <th>Date/Time</th>
+                                <th>Risk Level</th>
+                                <th>Score</th>
+                                <th>Factors</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for assessment in past_assessments %}
+                            <tr>
+                                <td>{{ assessment.assessed_at.strftime('%Y-%m-%d %H:%M') }}</td>
+                                <td>
+                                    <span class="badge badge-{{ 'danger' if assessment.risk_level in ['critical', 'high'] else 'warning' if assessment.risk_level == 'moderate' else 'success' }}">
+                                        {{ assessment.risk_level|upper }}
+                                    </span>
+                                </td>
+                                <td>{{ assessment.risk_score }}</td>
+                                <td>
+                                    {% set factors = assessment.risk_factors|default('[]')|safe %}
+                                    {% if factors and factors != '[]' %}
+                                    <small class="text-muted">Multiple factors detected</small>
+                                    {% else %}
+                                    <small class="text-muted">-</small>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="mt-4">
+    <a href="{{ url_for('patient_detail', patient_id=patient.id) }}" class="btn btn-secondary">
+        <i data-feather="arrow-left"></i> Back to Patient
+    </a>
+    <a href="{{ url_for('patient_history', patient_id=patient.id) }}" class="btn btn-outline-primary">
+        <i data-feather="clock"></i> View Full History
+    </a>
+</div>
+
+<style>
+.risk-score-circle {
+    width: 150px;
+    height: 150px;
+    border-radius: 50%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    margin: 0 auto;
+    border: 6px solid;
+}
+
+.risk-score-circle.risk-critical { border-color: #dc3545; background: rgba(220, 53, 69, 0.1); }
+.risk-score-circle.risk-high { border-color: #fd7e14; background: rgba(253, 126, 20, 0.1); }
+.risk-score-circle.risk-moderate { border-color: #ffc107; background: rgba(255, 193, 7, 0.1); }
+.risk-score-circle.risk-low { border-color: #17a2b8; background: rgba(23, 162, 184, 0.1); }
+.risk-score-circle.risk-stable { border-color: #28a745; background: rgba(40, 167, 69, 0.1); }
+.risk-score-circle.risk-unknown { border-color: #6c757d; background: rgba(108, 117, 125, 0.1); }
+
+.risk-score-circle .score {
+    font-size: 2.5rem;
+    font-weight: bold;
+    color: #1a1a2e;
+}
+
+.risk-score-circle .label {
+    font-size: 0.8rem;
+    color: #6c757d;
+}
+
+.prediction-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+
+.prediction-item {
+    padding: 12px;
+    border-left: 3px solid #ffc107;
+    background: rgba(255, 193, 7, 0.1);
+    margin-bottom: 10px;
+    border-radius: 0 8px 8px 0;
+}
+
+.prediction-item i {
+    margin-right: 8px;
+}
+
+.risk-factors-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 16px;
+}
+
+.risk-factor-card {
+    padding: 16px;
+    border-radius: 8px;
+    border-left: 4px solid;
+}
+
+.risk-factor-card.severity-critical { border-color: #dc3545; background: rgba(220, 53, 69, 0.05); }
+.risk-factor-card.severity-high { border-color: #fd7e14; background: rgba(253, 126, 20, 0.05); }
+.risk-factor-card.severity-medium { border-color: #ffc107; background: rgba(255, 193, 7, 0.05); }
+.risk-factor-card.severity-low { border-color: #17a2b8; background: rgba(23, 162, 184, 0.05); }
+
+.factor-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 8px;
+}
+
+.factor-type {
+    font-weight: 600;
+    color: #1a1a2e;
+}
+
+.factor-message {
+    margin: 0 0 8px 0;
+    font-size: 0.9rem;
+    color: #666;
+}
+
+.factor-trend {
+    font-size: 0.85rem;
+    color: #6c757d;
+}
+
+.factor-trend i {
+    width: 16px;
+    height: 16px;
+    vertical-align: middle;
+    margin-right: 4px;
+}
+</style>
+{% endblock %}

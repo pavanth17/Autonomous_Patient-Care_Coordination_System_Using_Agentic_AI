@@ -1,0 +1,167 @@
+{% extends "dashboard_base.html" %}
+
+{% block title %}Add Doctor Note - {{ patient.full_name }}{% endblock %}
+
+{% block content %}
+<div class="content-header">
+    <h1>Add Doctor Note</h1>
+    <p class="text-muted">Patient: {{ patient.full_name }} | Room {{ patient.room_number }}, Bed {{ patient.bed_number }}</p>
+</div>
+
+<div class="row">
+    <div class="col-lg-8">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">SOAP Note</h5>
+            </div>
+            <div class="card-body">
+                <form method="POST" action="{{ url_for('add_doctor_note', patient_id=patient.id) }}">
+                    <div class="form-group">
+                        <label>Note Type</label>
+                        <select name="note_type" class="form-control" required>
+                            <option value="progress">Progress Note</option>
+                            <option value="admission">Admission Note</option>
+                            <option value="consultation">Consultation</option>
+                            <option value="discharge">Discharge Summary</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Subjective</label>
+                        <textarea name="subjective" class="form-control" rows="3" 
+                            placeholder="Patient's symptoms, complaints, and history as reported by the patient..."></textarea>
+                        <small class="text-muted">Chief complaint, history of present illness, patient-reported symptoms</small>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Objective</label>
+                        <textarea name="objective" class="form-control" rows="3" 
+                            placeholder="Physical examination findings, vital signs, lab results, imaging results..."></textarea>
+                        <small class="text-muted">Physical exam findings, vitals, lab/imaging results</small>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Assessment</label>
+                        <textarea name="assessment" class="form-control" rows="3" 
+                            placeholder="Diagnosis, differential diagnoses, clinical impression..."></textarea>
+                        <small class="text-muted">Diagnosis, differential diagnoses, clinical reasoning</small>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Plan</label>
+                        <textarea name="plan" class="form-control" rows="3" 
+                            placeholder="Treatment plan, medications, procedures, follow-up instructions..."></textarea>
+                        <small class="text-muted">Treatment plan, medications, procedures, follow-up</small>
+                    </div>
+
+                    <div class="form-group mt-4">
+                        <button type="submit" class="btn btn-primary">
+                            <i data-feather="save"></i> Save Note
+                        </button>
+                        <a href="{{ url_for('patient_history', patient_id=patient.id) }}" class="btn btn-secondary">
+                            Cancel
+                        </a>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-lg-4">
+        <div class="card mb-3">
+            <div class="card-header">
+                <h5 class="mb-0">Patient Summary</h5>
+            </div>
+            <div class="card-body">
+                <dl>
+                    <dt>Diagnosis</dt>
+                    <dd>{{ patient.diagnosis or 'Pending' }}</dd>
+                    
+                    <dt>Status</dt>
+                    <dd>
+                        <span class="badge badge-{{ 'danger' if patient.status == 'emergency' else 'warning' if patient.status == 'icu' else 'primary' }}">
+                            {{ patient.status|upper }}
+                        </span>
+                    </dd>
+                    
+                    <dt>Admission Date</dt>
+                    <dd>{{ patient.admission_date.strftime('%Y-%m-%d') }}</dd>
+                    
+                    {% if patient.latest_vitals %}
+                    <dt>Latest Vitals</dt>
+                    <dd>
+                        HR: {{ patient.latest_vitals.heart_rate|round|int if patient.latest_vitals.heart_rate else '-' }} | 
+                        BP: {{ patient.latest_vitals.blood_pressure_systolic }}/{{ patient.latest_vitals.blood_pressure_diastolic }} | 
+                        O2: {{ patient.latest_vitals.oxygen_saturation|round(1) if patient.latest_vitals.oxygen_saturation else '-' }}%
+                    </dd>
+                    {% endif %}
+                </dl>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">SOAP Format Guide</h5>
+            </div>
+            <div class="card-body">
+                <div class="guide-item">
+                    <strong>S - Subjective</strong>
+                    <p>What the patient tells you about their symptoms and concerns</p>
+                </div>
+                <div class="guide-item">
+                    <strong>O - Objective</strong>
+                    <p>Measurable findings from examination and tests</p>
+                </div>
+                <div class="guide-item">
+                    <strong>A - Assessment</strong>
+                    <p>Your clinical judgment and diagnosis</p>
+                </div>
+                <div class="guide-item">
+                    <strong>P - Plan</strong>
+                    <p>Treatment approach and next steps</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+dl dt {
+    font-weight: 600;
+    color: #6c757d;
+    font-size: 0.85rem;
+    margin-top: 12px;
+}
+
+dl dd {
+    margin-bottom: 0;
+    color: #1a1a2e;
+}
+
+dl dt:first-child {
+    margin-top: 0;
+}
+
+.guide-item {
+    margin-bottom: 16px;
+    padding-bottom: 16px;
+    border-bottom: 1px solid #eee;
+}
+
+.guide-item:last-child {
+    margin-bottom: 0;
+    padding-bottom: 0;
+    border-bottom: none;
+}
+
+.guide-item strong {
+    color: #1a1a2e;
+}
+
+.guide-item p {
+    margin: 4px 0 0 0;
+    font-size: 0.85rem;
+    color: #6c757d;
+}
+</style>
+{% endblock %}

@@ -1,0 +1,261 @@
+{% extends "dashboard_base.html" %}
+
+{% block title %}{{ patient.full_name }} - CareSync AI{% endblock %}
+
+{% block dashboard_content %}
+<div class="page-header d-flex justify-content-between align-items-center">
+    <div>
+        <a href="{{ url_for('dashboard') }}" class="btn btn-outline-secondary btn-sm mb-2">
+            <i class="bi bi-arrow-left me-1"></i>Back to Dashboard
+        </a>
+        <h1>{{ patient.full_name }}</h1>
+        <p class="text-muted">{{ patient.patient_id }} | {{ patient.age }} years old | {{ patient.gender }}</p>
+    </div>
+    <div class="d-flex align-items-center gap-2">
+        <a href="{{ url_for('patient_risk_analysis', patient_id=patient.id) }}" class="btn btn-info btn-sm">
+            <i class="bi bi-cpu me-1"></i>AI Risk Analysis
+        </a>
+        <a href="{{ url_for('patient_medications', patient_id=patient.id) }}" class="btn btn-outline-primary btn-sm">
+            <i class="bi bi-capsule me-1"></i>Medications
+        </a>
+        <a href="{{ url_for('patient_history', patient_id=patient.id) }}" class="btn btn-outline-secondary btn-sm">
+            <i class="bi bi-clock-history me-1"></i>History
+        </a>
+        <span class="status-badge status-{{ patient.status }} fs-5">
+            {{ patient.status|upper }}
+        </span>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-lg-4">
+        <div class="card mb-4">
+            <div class="card-header">
+                <h5><i class="bi bi-person me-2"></i>Patient Information</h5>
+            </div>
+            <div class="card-body">
+                <div class="info-row">
+                    <label>Room / Bed</label>
+                    <span>{{ patient.room_number or '-' }} / {{ patient.bed_number or '-' }}</span>
+                </div>
+                <div class="info-row">
+                    <label>Blood Type</label>
+                    <span>{{ patient.blood_type or 'Unknown' }}</span>
+                </div>
+                <div class="info-row">
+                    <label>Admission Date</label>
+                    <span>{{ patient.admission_date.strftime('%Y-%m-%d %H:%M') if patient.admission_date else '-' }}</span>
+                </div>
+                <div class="info-row">
+                    <label>Diagnosis</label>
+                    <span>{{ patient.diagnosis or 'Not specified' }}</span>
+                </div>
+                <div class="info-row">
+                    <label>Assigned Doctor</label>
+                    <span>{{ 'Dr. ' + patient.assigned_doctor.full_name if patient.assigned_doctor else 'Not assigned' }}</span>
+                </div>
+                <div class="info-row">
+                    <label>Assigned Nurse</label>
+                    <span>{{ patient.assigned_nurse.full_name if patient.assigned_nurse else 'Not assigned' }}</span>
+                </div>
+                <hr>
+                <div class="info-row">
+                    <label>Phone</label>
+                    <span>{{ patient.phone or '-' }}</span>
+                </div>
+                <div class="info-row">
+                    <label>Emergency Contact</label>
+                    <span>{{ patient.emergency_contact_name or '-' }}</span>
+                </div>
+                <div class="info-row">
+                    <label>Emergency Phone</label>
+                    <span>{{ patient.emergency_contact_phone or '-' }}</span>
+                </div>
+            </div>
+        </div>
+        
+        {% if medications %}
+        <div class="card mb-4">
+            <div class="card-header">
+                <h5><i class="bi bi-capsule me-2"></i>Active Medications</h5>
+            </div>
+            <div class="card-body p-0">
+                <div class="medication-list">
+                    {% for med in medications %}
+                    <div class="medication-item">
+                        <div class="med-name">
+                            <a href="javascript:void(0)" onclick="showMedicineDetails('{{ med.name }}')" class="text-decoration-none text-primary fw-bold">
+                                {{ med.name }}
+                            </a>
+                        </div>
+                        <div class="med-details">
+                            <span>{{ med.dosage }}</span>
+                            <span>{{ med.frequency }}</span>
+                            <span class="badge bg-secondary">{{ med.route }}</span>
+                        </div>
+                        {% if med.next_due %}
+                        <div class="med-next">
+                            Next due: {{ med.next_due.strftime('%H:%M') }}
+                        </div>
+                        {% endif %}
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+        {% endif %}
+        
+        {% if lab_reports %}
+        <div class="card mb-4">
+            <div class="card-header">
+                <h5><i class="bi bi-kanban me-2"></i>Lab Reports</h5>
+            </div>
+            <div class="card-body p-0">
+                <div class="lab-list p-3">
+                    {% for lab in lab_reports %}
+                    <div class="lab-item mb-2">
+                        <div class="d-flex justify-content-between">
+                            <div>
+                                <strong>{{ lab.test_name }}</strong>
+                                <div class="text-muted small">{{ lab.reported_at.strftime('%Y-%m-%d %H:%M') }} by {{ lab.reported_by.full_name if lab.reported_by else 'Lab' }}</div>
+                            </div>
+                            <div class="text-end">
+                                <div>{{ lab.result }} {{ lab.units or '' }}</div>
+                                <div class="text-muted small">Normal: {{ lab.normal_range or 'n/a' }}</div>
+                            </div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+    
+    <div class="col-lg-8">
+        <div class="card mb-4">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5><i class="bi bi-activity me-2"></i>Live Vital Signs</h5>
+                <span class="badge bg-success" id="liveIndicator">
+                    <i class="bi bi-circle-fill me-1"></i>LIVE
+                </span>
+            </div>
+            <div class="card-body">
+                {% if patient.latest_vitals %}
+                <div class="vitals-display-large">
+                    <div class="vital-card vital-{{ 'critical' if patient.latest_vitals.heart_rate and (patient.latest_vitals.heart_rate < 50 or patient.latest_vitals.heart_rate > 130) else 'warning' if patient.latest_vitals.heart_rate and (patient.latest_vitals.heart_rate < 60 or patient.latest_vitals.heart_rate > 100) else 'normal' }}">
+                        <div class="vital-icon"><i class="bi bi-heart-pulse"></i></div>
+                        <div class="vital-data">
+                            <div class="vital-value" id="heartRate">{{ patient.latest_vitals.heart_rate|int if patient.latest_vitals.heart_rate else 'Nill' }}</div>
+                            <div class="vital-unit">bpm</div>
+                        </div>
+                        <div class="vital-name">Heart Rate</div>
+                    </div>
+                    
+                    <div class="vital-card vital-{{ 'critical' if patient.latest_vitals.blood_pressure_systolic and (patient.latest_vitals.blood_pressure_systolic < 90 or patient.latest_vitals.blood_pressure_systolic > 160) else 'warning' if patient.latest_vitals.blood_pressure_systolic and (patient.latest_vitals.blood_pressure_systolic < 100 or patient.latest_vitals.blood_pressure_systolic > 140) else 'normal' }}">
+                        <div class="vital-icon"><i class="bi bi-droplet"></i></div>
+                        <div class="vital-data">
+                            <div class="vital-value" id="bloodPressure">{{ patient.latest_vitals.blood_pressure_systolic|int if patient.latest_vitals.blood_pressure_systolic else 'Nill' }}/{{ patient.latest_vitals.blood_pressure_diastolic|int if patient.latest_vitals.blood_pressure_diastolic else 'Nill' }}</div>
+                            <div class="vital-unit">mmHg</div>
+                        </div>
+                        <div class="vital-name">Blood Pressure</div>
+                    </div>
+                    
+                    <div class="vital-card vital-{{ 'critical' if patient.latest_vitals.oxygen_saturation and patient.latest_vitals.oxygen_saturation < 90 else 'warning' if patient.latest_vitals.oxygen_saturation and patient.latest_vitals.oxygen_saturation < 95 else 'normal' }}">
+                        <div class="vital-icon"><i class="bi bi-lungs"></i></div>
+                        <div class="vital-data">
+                            <div class="vital-value" id="oxygenSat">{{ patient.latest_vitals.oxygen_saturation|int if patient.latest_vitals.oxygen_saturation else 'Nill' }}</div>
+                            <div class="vital-unit">%</div>
+                        </div>
+                        <div class="vital-name">SpO2</div>
+                    </div>
+                    
+                    <div class="vital-card vital-{{ 'critical' if patient.latest_vitals.temperature and (patient.latest_vitals.temperature < 96 or patient.latest_vitals.temperature > 102) else 'warning' if patient.latest_vitals.temperature and (patient.latest_vitals.temperature < 97 or patient.latest_vitals.temperature > 100) else 'normal' }}">
+                        <div class="vital-icon"><i class="bi bi-thermometer-half"></i></div>
+                        <div class="vital-data">
+                            <div class="vital-value" id="temperature">{{ '%.1f'|format(patient.latest_vitals.temperature) if patient.latest_vitals.temperature else 'Nill' }}</div>
+                            <div class="vital-unit">°F</div>
+                        </div>
+                        <div class="vital-name">Temperature</div>
+                    </div>
+                    
+                    <div class="vital-card">
+                        <div class="vital-icon"><i class="bi bi-wind"></i></div>
+                        <div class="vital-data">
+                            <div class="vital-value" id="respRate">{{ patient.latest_vitals.respiratory_rate if patient.latest_vitals.respiratory_rate else 'Nill' }}</div>
+                            <div class="vital-unit">/min</div>
+                        </div>
+                        <div class="vital-name">Respiratory Rate</div>
+                    </div>
+                </div>
+                <div class="text-muted text-center mt-3">
+                    <i class="bi bi-clock me-1"></i>
+                    Last updated: <span id="lastUpdated">{{ patient.latest_vitals.recorded_at.strftime('%Y-%m-%d %H:%M:%S') }}</span>
+                </div>
+                {% else %}
+                <div class="empty-state">
+                    <i class="bi bi-activity"></i>
+                    <p>No vital signs recorded yet</p>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+        
+        <div class="card mb-4">
+            <div class="card-header">
+                <h5><i class="bi bi-graph-up me-2"></i>Vital Signs History</h5>
+            </div>
+            <div class="card-body">
+                <canvas id="vitalsChart" height="200"></canvas>
+            </div>
+        </div>
+        
+        {% if alerts %}
+        <div class="card mb-4">
+            <div class="card-header">
+                <h5><i class="bi bi-bell me-2"></i>Recent Alerts</h5>
+            </div>
+            <div class="card-body p-0">
+                <div class="alert-list">
+                    {% for alert in alerts[:5] %}
+                    <div class="alert-item alert-{{ alert.severity }}">
+                        <div class="alert-icon">
+                            {% if alert.severity == 'critical' %}
+                            <i class="bi bi-exclamation-octagon-fill"></i>
+                            {% else %}
+                            <i class="bi bi-exclamation-triangle-fill"></i>
+                            {% endif %}
+                        </div>
+                        <div class="alert-content">
+                            <h6>{{ alert.title }}</h6>
+                            <p>{{ alert.message }}</p>
+                            <small class="text-muted">{{ alert.created_at.strftime('%Y-%m-%d %H:%M:%S') }}</small>
+                        </div>
+                        {% if alert.is_acknowledged %}
+                        <span class="badge bg-success">Acknowledged</span>
+                        {% else %}
+                        <form action="{{ url_for('acknowledge_alert', alert_id=alert.id) }}" method="POST">
+                            <button type="submit" class="btn btn-sm btn-outline-secondary">
+                                <i class="bi bi-check"></i>
+                            </button>
+                        </form>
+                        {% endif %}
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<script>
+const patientId = {{ patient.id }};
+const vitalsHistory = {{ vitals_json|tojson|safe if vitals_json else '[]' }};
+</script>
+{% endblock %}
+
+{% block scripts %}
+{{ super() }}
+<script src="{{ url_for('static', filename='js/patient_detail.js') }}"></script>
+{% endblock %}

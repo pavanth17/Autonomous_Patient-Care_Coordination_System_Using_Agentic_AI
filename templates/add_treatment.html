@@ -1,0 +1,129 @@
+{% extends "dashboard_base.html" %}
+
+{% block title %}Log Treatment - {{ patient.full_name }}{% endblock %}
+
+{% block content %}
+<div class="content-header">
+    <h1>Log Treatment</h1>
+    <p class="text-muted">Patient: {{ patient.full_name }} | Room {{ patient.room_number }}, Bed {{ patient.bed_number }}</p>
+</div>
+
+<div class="row">
+    <div class="col-lg-8">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">Treatment Details</h5>
+            </div>
+            <div class="card-body">
+                <form method="POST" action="{{ url_for('add_treatment', patient_id=patient.id) }}">
+                    <div class="form-group">
+                        <label>Treatment Type <span class="text-danger">*</span></label>
+                        <select name="treatment_type" class="form-control" required>
+                            <option value="">Select Treatment Type</option>
+                            <option value="Medication Administration">Medication Administration</option>
+                            <option value="IV Therapy">IV Therapy</option>
+                            <option value="Blood Draw">Blood Draw</option>
+                            <option value="Wound Care">Wound Care</option>
+                            <option value="Physical Therapy">Physical Therapy</option>
+                            <option value="Respiratory Therapy">Respiratory Therapy</option>
+                            <option value="Dialysis">Dialysis</option>
+                            <option value="Imaging">Imaging (X-ray, CT, MRI)</option>
+                            <option value="Surgery">Surgery/Procedure</option>
+                            <option value="Consultation">Consultation</option>
+                            <option value="Vital Signs Check">Vital Signs Check</option>
+                            <option value="Patient Education">Patient Education</option>
+                            <option value="Discharge Planning">Discharge Planning</option>
+                            <option value="Other">Other</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Description <span class="text-danger">*</span></label>
+                        <textarea name="description" class="form-control" rows="4" required
+                            placeholder="Describe the treatment performed, including details about procedures, medications given, patient response..."></textarea>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Notes</label>
+                        <textarea name="notes" class="form-control" rows="3"
+                            placeholder="Additional notes, observations, patient tolerance, follow-up instructions..."></textarea>
+                    </div>
+
+                    <div class="form-group mt-4">
+                        <button type="submit" class="btn btn-primary">
+                            <i data-feather="save"></i> Save Treatment Log
+                        </button>
+                        <a href="{{ url_for('patient_history', patient_id=patient.id) }}" class="btn btn-secondary">
+                            Cancel
+                        </a>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-lg-4">
+        <div class="card mb-3">
+            <div class="card-header">
+                <h5 class="mb-0">Patient Info</h5>
+            </div>
+            <div class="card-body">
+                <dl>
+                    <dt>Patient ID</dt>
+                    <dd>{{ patient.patient_id }}</dd>
+                    
+                    <dt>Age / Gender</dt>
+                    <dd>{{ patient.age }} years / {{ patient.gender }}</dd>
+                    
+                    <dt>Blood Type</dt>
+                    <dd>{{ patient.blood_type or 'Unknown' }}</dd>
+                    
+                    <dt>Diagnosis</dt>
+                    <dd>{{ patient.diagnosis or 'Pending' }}</dd>
+                    
+                    <dt>Status</dt>
+                    <dd>
+                        <span class="badge badge-{{ 'danger' if patient.status == 'emergency' else 'warning' if patient.status == 'icu' else 'primary' }}">
+                            {{ patient.status|upper }}
+                        </span>
+                    </dd>
+                </dl>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">Recording By</h5>
+            </div>
+            <div class="card-body">
+                <p class="mb-1"><strong>{{ staff.full_name }}</strong></p>
+                <p class="mb-1 text-muted">{{ staff.role|title }}</p>
+                <p class="mb-0 text-muted">{{ staff.staff_id }}</p>
+                <hr>
+                <p class="mb-0 text-muted small">
+                    <i data-feather="clock" style="width: 14px; height: 14px;"></i>
+                    {{ now.strftime('%Y-%m-%d %H:%M') }}
+                </p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+dl dt {
+    font-weight: 600;
+    color: #6c757d;
+    font-size: 0.85rem;
+    margin-top: 12px;
+}
+
+dl dd {
+    margin-bottom: 0;
+    color: #1a1a2e;
+}
+
+dl dt:first-child {
+    margin-top: 0;
+}
+</style>
+{% endblock %}

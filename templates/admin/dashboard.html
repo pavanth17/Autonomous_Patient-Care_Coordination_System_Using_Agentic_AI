@@ -1,0 +1,300 @@
+{% extends "dashboard_base.html" %}
+
+{% block title %}Admin Dashboard - CareSync AI{% endblock %}
+
+{% block sidebar %}
+<div class="sidebar-content">
+    <div class="sidebar-header">
+        <h5><i class="bi bi-shield-check me-2"></i>Admin Panel</h5>
+    </div>
+    <nav class="sidebar-nav">
+        <a href="{{ url_for('admin_dashboard') }}" class="nav-link active">
+            <i class="bi bi-speedometer2"></i>Dashboard
+        </a>
+        <a href="{{ url_for('admin_users') }}" class="nav-link">
+            <i class="bi bi-people"></i>Manage Staff
+        </a>
+        <a href="{{ url_for('admin_register') }}" class="nav-link">
+            <i class="bi bi-person-plus"></i>Register Staff
+        </a>
+        <a href="{{ url_for('admin_patients') }}" class="nav-link">
+            <i class="bi bi-person-heart"></i>All Patients
+        </a>
+        <a href="{{ url_for('admin_rerouting_logs') }}" class="nav-link">
+            <i class="bi bi-arrow-repeat"></i>Rerouting Logs
+        </a>
+    </nav>
+</div>
+{% endblock %}
+
+{% block dashboard_content %}
+<div class="page-header">
+    <h1><i class="bi bi-speedometer2 me-2"></i>Admin Dashboard</h1>
+    <p class="text-muted">System overview and management</p>
+</div>
+
+<div class="stats-grid">
+    <div class="stat-card">
+        <div class="stat-icon bg-primary">
+            <i class="bi bi-people-fill"></i>
+        </div>
+        <div class="stat-content">
+            <h3>{{ total_patients }}</h3>
+            <p>Active Patients</p>
+        </div>
+    </div>
+    
+    <div class="stat-card">
+        <div class="stat-icon bg-success">
+            <i class="bi bi-person-badge"></i>
+        </div>
+        <div class="stat-content">
+            <h3>{{ on_duty_doctors }}/{{ total_doctors }}</h3>
+            <p>Doctors On Duty</p>
+        </div>
+    </div>
+    
+    <div class="stat-card">
+        <div class="stat-icon bg-info">
+            <i class="bi bi-heart-pulse"></i>
+        </div>
+        <div class="stat-content">
+            <h3>{{ on_duty_nurses }}/{{ total_nurses }}</h3>
+            <p>Nurses On Duty</p>
+        </div>
+    </div>
+    
+    <div class="stat-card {% if critical_alerts > 0 %}stat-critical{% endif %}">
+        <div class="stat-icon bg-danger">
+            <i class="bi bi-exclamation-triangle-fill"></i>
+        </div>
+        <div class="stat-content">
+            <h3>{{ critical_alerts }}</h3>
+            <p>Critical Alerts</p>
+        </div>
+    </div>
+</div>
+
+<div class="row mt-4">
+    <div class="col-md-6 col-lg-3">
+        <div class="info-card">
+            <div class="info-header">
+                <i class="bi bi-hospital text-danger"></i>
+                <span>ICU Patients</span>
+            </div>
+            <div class="info-value">{{ icu_patients }}</div>
+        </div>
+    </div>
+    <div class="col-md-6 col-lg-3">
+        <div class="info-card">
+            <div class="info-header">
+                <i class="bi bi-lightning-fill text-warning"></i>
+                <span>Emergency</span>
+            </div>
+            <div class="info-value">{{ emergency_patients }}</div>
+        </div>
+    </div>
+    <div class="col-md-6 col-lg-3">
+        <a href="{{ url_for('admin_register') }}?role=doctor" class="info-card action-card">
+            <div class="info-header">
+                <i class="bi bi-person-plus text-success"></i>
+                <span>Register Doctor</span>
+            </div>
+            <i class="bi bi-arrow-right"></i>
+        </a>
+    </div>
+    <div class="col-md-6 col-lg-3">
+        <a href="{{ url_for('admin_rerouting_logs') }}" class="info-card action-card">
+            <div class="info-header">
+                <i class="bi bi-arrow-repeat text-primary"></i>
+                <span>Alert Reroutings</span>
+            </div>
+            <div class="info-value">{{ rerouting_count }}</div>
+            <i class="bi bi-arrow-right"></i>
+        </a>
+    </div>
+</div>
+
+<div class="row mt-4">
+    <div class="col-lg-6">
+        <div class="card">
+            <div class="card-header">
+                <h5><i class="bi bi-person-badge me-2"></i>Doctors</h5>
+            </div>
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table table-hover mb-0">
+                        <thead>
+                            <tr>
+                                <th>ID</th>
+                                <th>Name</th>
+                                <th>Department</th>
+                                <th>Status</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for doctor in doctors[:5] %}
+                            <tr>
+                                <td><code>{{ doctor.staff_id }}</code></td>
+                                <td>Dr. {{ doctor.full_name }}</td>
+                                <td>{{ doctor.department or '-' }}</td>
+                                <td>
+                                    {% if doctor.is_on_duty %}
+                                    <span class="badge bg-success">On Duty</span>
+                                    {% else %}
+                                    <span class="badge bg-secondary">Off Duty</span>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-lg-6">
+        <div class="card">
+            <div class="card-header">
+                <h5><i class="bi bi-heart-pulse me-2"></i>Nurses</h5>
+            </div>
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table table-hover mb-0">
+                        <thead>
+                            <tr>
+                                <th>ID</th>
+                                <th>Name</th>
+                                <th>Department</th>
+                                <th>Status</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for nurse in nurses[:5] %}
+                            <tr>
+                                <td><code>{{ nurse.staff_id }}</code></td>
+                                <td>{{ nurse.full_name }}</td>
+                                <td>{{ nurse.department or '-' }}</td>
+                                <td>
+                                    {% if nurse.is_on_duty %}
+                                    <span class="badge bg-success">On Duty</span>
+                                    {% else %}
+                                    <span class="badge bg-secondary">Off Duty</span>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% if recent_alerts %}
+<div class="card mt-4">
+    <div class="card-header d-flex justify-content-between align-items-center">
+        <h5><i class="bi bi-exclamation-triangle me-2"></i>Recent Alerts</h5>
+        <span class="badge bg-danger">{{ recent_alerts|length }} Active</span>
+    </div>
+    <div class="card-body p-0">
+        <div class="alert-list">
+            {% for alert in recent_alerts %}
+            <div class="alert-item alert-{{ alert.severity }}">
+                <div class="alert-icon">
+                    {% if alert.severity == 'critical' %}
+                    <i class="bi bi-exclamation-octagon-fill"></i>
+                    {% else %}
+                    <i class="bi bi-exclamation-triangle-fill"></i>
+                    {% endif %}
+                </div>
+                <div class="alert-content">
+                    <h6>{{ alert.title }}</h6>
+                    <p>{{ alert.message }}</p>
+                    <small class="text-muted">{{ alert.created_at.strftime('%H:%M:%S') }}</small>
+                </div>
+                <form action="{{ url_for('acknowledge_alert', alert_id=alert.id) }}" method="POST">
+                    <button type="submit" class="btn btn-sm btn-outline-secondary">
+                        <i class="bi bi-check"></i> Acknowledge
+                    </button>
+                </form>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+</div>
+{% endif %}
+
+<script>
+    // Trigger emergency alert popup 30 seconds after dashboard loads (only once per session)
+    window.addEventListener('load', function() {
+        const alertTriggered = sessionStorage.getItem('emergencyAlertTriggered');
+        if (!alertTriggered) {
+            setTimeout(function() {
+                fetch('/api/trigger-emergency-alert', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-Requested-With': 'XMLHttpRequest'
+                    }
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        sessionStorage.setItem('emergencyAlertTriggered', 'true');
+                        // Show popup alert
+                        showEmergencyPopup({
+                            severity: data.severity,
+                            patient_name: data.patient_name,
+                            message: data.message,
+                            alert_id: data.alert_id
+                        });
+                        // Reload to show alert in alerts section
+                        location.reload();
+                    }
+                })
+                .catch(err => console.error('Error triggering alert:', err));
+            }, 30000); // 30 seconds
+        }
+    });
+
+    function showEmergencyPopup(alert) {
+        const title = alert.severity === 'critical' ? '🚨 CRITICAL EMERGENCY ALERT!' : '⚠️ EMERGENCY ALERT';
+        const message = `
+            <strong>${alert.patient_name}</strong><br>
+            <p>${alert.message}</p>
+        `;
+        
+        // Create modal if it doesn't exist
+        let modal = document.getElementById('emergencyAlertModal');
+        if (!modal) {
+            const modalHTML = `
+                <div class="modal fade" id="emergencyAlertModal" tabindex="-1" data-bs-backdrop="static" data-bs-keyboard="false">
+                    <div class="modal-dialog modal-lg modal-dialog-centered">
+                        <div class="modal-content bg-danger text-white">
+                            <div class="modal-header border-0">
+                                <h5 class="modal-title" id="emergencyTitle"></h5>
+                                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                            </div>
+                            <div class="modal-body" id="emergencyMessage"></div>
+                            <div class="modal-footer border-0">
+                                <button type="button" class="btn btn-light" data-bs-dismiss="modal">Acknowledge</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+            document.body.insertAdjacentHTML('beforeend', modalHTML);
+            modal = document.getElementById('emergencyAlertModal');
+        }
+        
+        document.getElementById('emergencyTitle').textContent = title;
+        document.getElementById('emergencyMessage').innerHTML = message;
+        
+        const bsModal = new bootstrap.Modal(modal);
+        bsModal.show();
+    }
+</script>
+{% endblock %}

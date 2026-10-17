@@ -1,0 +1,340 @@
+{% extends "patient_portal_base.html" %}
+
+{% block content %}
+<div class="header-bar">
+    <h4 class="mb-0">Appointments</h4>
+    <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#bookModal">
+        <i class="bi bi-plus-lg me-2"></i>New Appointment
+    </button>
+</div>
+
+<div class="card border-0 shadow-sm">
+    <div class="card-body">
+        <div class="table-responsive">
+            <table class="table align-middle">
+                <thead>
+                    <tr>
+                        <th>Status</th>
+                        <th>Date & Time</th>
+                        <th>Type</th>
+                        <th>Doctor</th>
+                        <th>Reason</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for appt in appointments %}
+                    <tr>
+                        <td>
+                            {% if appt.status == 'confirmed' %}
+                            <span class="badge bg-success">Confirmed</span>
+                            {% elif appt.status == 'cancelled' %}
+                            <span class="badge bg-danger">Cancelled</span>
+                            {% else %}
+                            <span class="badge bg-warning text-dark">Pending</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if appt.preferred_date %}
+                            {{ appt.preferred_date.strftime('%Y-%m-%d') }}
+                            <span class="text-muted">{{ appt.preferred_time }}</span>
+                            {% else %}
+                            <span class="text-muted">To be scheduled</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            <span class="badge bg-info">{{ appt.appointment_type or 'General' }}</span>
+                        </td>
+                        <td>
+                            {% if appt.doctor %}
+                            {{ appt.doctor.full_name }}
+                            {% elif appt.allocated_by_system %}
+                            <span class="text-success"><i class="bi bi-robot me-1"></i>Auto-allocated</span>
+                            {% else %}
+                            <span class="text-muted">Pending assignment</span>
+                            {% endif %}
+                        </td>
+                        <td>{{ appt.notes[:50] }}{% if appt.notes|length > 50 %}...{% endif %}</td>
+                    </tr>
+                    {% else %}
+                    <tr>
+                        <td colspan="5" class="text-center py-4 text-muted">
+                            <i class="bi bi-calendar-x fs-1 d-block mb-2"></i>
+                            No appointments found.
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- Booking Modal with Multi-Language Support -->
+<div class="modal fade" id="bookModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Request Appointment</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <!-- Language Selection -->
+                <div class="mb-4">
+                    <label class="form-label fw-bold">Select Language</label>
+                    <div class="btn-group w-100" role="group">
+                        <input type="radio" class="btn-check" name="language" id="lang_en" value="en" checked>
+                        <label class="btn btn-outline-primary" for="lang_en">English</label>
+                        
+                        <input type="radio" class="btn-check" name="language" id="lang_hi" value="hi">
+                        <label class="btn btn-outline-primary" for="lang_hi">हिन्दी</label>
+                        
+                        <input type="radio" class="btn-check" name="language" id="lang_te" value="te">
+                        <label class="btn btn-outline-primary" for="lang_te">తెలుగు</label>
+                        
+                        <input type="radio" class="btn-check" name="language" id="lang_ta" value="ta">
+                        <label class="btn btn-outline-primary" for="lang_ta">தமிழ்</label>
+                        
+                        <input type="radio" class="btn-check" name="language" id="lang_ml" value="ml">
+                        <label class="btn btn-outline-primary" for="lang_ml">മലയാളം</label>
+                    </div>
+                </div>
+
+                <form id="bookForm">
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label" id="label_date">Preferred Date</label>
+                            <input type="date" id="prefDate" class="form-control" required>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label" id="label_time">Preferred Time</label>
+                            <input type="time" id="prefTime" class="form-control" required>
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label" id="label_type">Appointment Type</label>
+                        <select id="apptType" class="form-select" required>
+                            <option value="routine">Routine Checkup</option>
+                            <option value="consultation">General Consultation</option>
+                            <option value="follow-up">Follow-up Visit</option>
+                            <option value="diagnostic">Diagnostic Test</option>
+                        </select>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label" id="label_department">Department</label>
+                        <select id="department" class="form-select" required>
+                            <option value="General">General Medicine</option>
+                            <option value="Cardiology">Cardiology</option>
+                            <option value="Neurology">Neurology</option>
+                            <option value="Surgery">General Surgery</option>
+                            <option value="ICU">Intensive Care Unit</option>
+                            <option value="Emergency">Emergency Department</option>
+                            <option value="Pediatrics">Pediatrics</option>
+                            <option value="Orthopedics">Orthopedics</option>
+                            <option value="Psychiatry">Psychiatry</option>
+                        </select>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label" id="label_urgency">Urgency Level</label>
+                        <select id="urgency" class="form-select" required>
+                            <option value="normal">Normal</option>
+                            <option value="urgent">Urgent</option>
+                            <option value="emergency">Emergency</option>
+                        </select>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label" id="label_reason">Reason / Details</label>
+                        <textarea id="reason" class="form-control" rows="3" required 
+                                  placeholder="Please describe your symptoms or reason for visit"></textarea>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label" id="label_doctor">Preferred Doctor (Optional)</label>
+                        <select id="docSelect" class="form-select">
+                            <option value="">Any Available Doctor - Auto Match</option>
+                            {% for doc in doctors %}
+                            <option value="{{ doc.id }}">{{ doc.full_name }} ({{ doc.specialization or 'General' }})</option>
+                            {% endfor %}
+                        </select>
+                        <small class="text-muted d-block mt-2">
+                            <i class="bi bi-info-circle me-1"></i>Leave blank for intelligent auto-matching with available doctors
+                        </small>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal" id="btn_cancel">Cancel</button>
+                <button type="button" class="btn btn-primary" id="confirmBookBtn" id="btn_submit">Submit Request</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+// Multi-language support
+const translations = {
+    'en': {
+        'label_date': 'Preferred Date',
+        'label_time': 'Preferred Time',
+        'label_type': 'Appointment Type',
+        'label_department': 'Department',
+        'label_urgency': 'Urgency Level',
+        'label_reason': 'Reason / Details',
+        'label_doctor': 'Preferred Doctor (Optional)',
+        'btn_submit': 'Submit Request',
+        'btn_cancel': 'Cancel',
+        'submit_text': 'Sending...',
+        'success': 'Appointment request submitted successfully!',
+        'error': 'Error submitting request.',
+        'fill_fields': 'Please fill in all required fields.',
+        'network_error': 'Network error. Please try again.'
+    },
+    'hi': {
+        'label_date': 'पसंदीदा तारीख',
+        'label_time': 'पसंदीदा समय',
+        'label_type': 'नियुक्ति का प्रकार',
+        'label_department': 'विभाग',
+        'label_urgency': 'आपातता स्तर',
+        'label_reason': 'कारण / विवरण',
+        'label_doctor': 'पसंदीदा डॉक्टर (वैकल्पिक)',
+        'btn_submit': 'अनुरोध जमा करें',
+        'btn_cancel': 'रद्द करें',
+        'submit_text': 'भेजा जा रहा है...',
+        'success': 'नियुक्ति अनुरोध सफलतापूर्वक जमा किया गया!',
+        'error': 'अनुरोध जमा करने में त्रुटि।',
+        'fill_fields': 'कृपया सभी आवश्यक फ़ील्ड भरें।',
+        'network_error': 'नेटवर्क त्रुटि। कृपया पुनः प्रयास करें।'
+    },
+    'te': {
+        'label_date': 'ఇష్టమైన తేదీ',
+        'label_time': 'ఇష్టమైన సమయం',
+        'label_type': 'నియామక రకం',
+        'label_department': 'విభాగం',
+        'label_urgency': 'తత్ seattle ప్రాధాన్యత స్థరం',
+        'label_reason': 'కారణం / వివరాలు',
+        'label_doctor': 'ఇష్టమైన డాక్టర్ (ఐచ్ఛికం)',
+        'btn_submit': 'అభ్యర్థన సమర్పించండి',
+        'btn_cancel': 'రద్దు చేయండి',
+        'submit_text': 'పంపిస్తోంది...',
+        'success': 'నియామక అభ్యర్థన విజయవంతంగా సమర్పించబడింది!',
+        'error': 'అభ్యర్థన సమర్పించడంలో లోపం.',
+        'fill_fields': 'దయచేసి అన్ని అవసరమైన ఫీల్డ్‌లను పూరించండి.',
+        'network_error': 'నెట్‌వర్క్ లోపం. దయచేసి మళ్లీ ప్రయత్నించండి.'
+    },
+    'ta': {
+        'label_date': 'விருப்பமான தேதி',
+        'label_time': 'விருப்பமான நேரம்',
+        'label_type': 'நியமன வகை',
+        'label_department': 'பிரிவு',
+        'label_urgency': 'அவசரத்தன்மை நிலை',
+        'label_reason': 'காரணம் / விவரங்கள்',
+        'label_doctor': 'விருப்பமான டாக்டர் (விரும்பினால்)',
+        'btn_submit': 'கோரிக்கை சமர்ப்பிக்கவும்',
+        'btn_cancel': 'ரத்து செய்யவும்',
+        'submit_text': 'அனுப்பப்படுகிறது...',
+        'success': 'நியமன கோரிக்கை வெற்றிகரமாக சமர்ப்பிக்கப்பட்டது!',
+        'error': 'கோரிக்கை சமர்ப்பிப்பில்오류.',
+        'fill_fields': 'தயவுசெய்து அனைத்து தேவையான புலங்களை நிரப்பவும்.',
+        'network_error': 'நெட்வொர்க் त्रुटि. தயவுசெய்து மீண்டும் முயற்சிக்கவும்.'
+    },
+    'ml': {
+        'label_date': 'ആഗ്രഹിക്കുന്ന തീയതി',
+        'label_time': 'ആഗ്രഹിക്കുന്ന സമയം',
+        'label_type': 'നിയമനം തരം',
+        'label_department': 'വിഭാഗം',
+        'label_urgency': 'അടിയന്തരത മാത്ര',
+        'label_reason': 'കാരണം / വിവരങ്ങൾ',
+        'label_doctor': 'ആഗ്രഹിക്കുന്ന ഡാക്ടർ (ഐച്ഛികം)',
+        'btn_submit': 'അഭ്യർത്ഥന സമർപ്പിക്കുക',
+        'btn_cancel': 'റദ്ദാക്കുക',
+        'submit_text': 'അയയ്ക്കുന്നു...',
+        'success': 'നിയമന അഭ്യർത്ഥന വിജയകരമായി സമർപ്പിച്ചു!',
+        'error': 'അഭ്യർത്ഥന സമർപ്പിക്കുന്നതിൽ പിഴവ്.',
+        'fill_fields': 'കൃപയാ എല്ലാ ആവശ്യമായ ഫീൽഡുകൾ പൂരിപ്പിക്കുക.',
+        'network_error': 'നെറ്റ്‌വർക്ക് പിഴവ്. കൃപയാ വീണ്ടും ശ്രമിക്കുക.'
+    }
+};
+
+function updateUILanguage(lang) {
+    const labels = translations[lang];
+    document.getElementById('label_date').textContent = labels.label_date;
+    document.getElementById('label_time').textContent = labels.label_time;
+    document.getElementById('label_type').textContent = labels.label_type;
+    document.getElementById('label_department').textContent = labels.label_department;
+    document.getElementById('label_urgency').textContent = labels.label_urgency;
+    document.getElementById('label_reason').textContent = labels.label_reason;
+    document.getElementById('label_doctor').textContent = labels.label_doctor;
+    document.getElementById('btn_submit').textContent = labels.btn_submit;
+    document.getElementById('btn_cancel').textContent = labels.btn_cancel;
+}
+
+// Language change handlers
+document.querySelectorAll('input[name="language"]').forEach(radio => {
+    radio.addEventListener('change', function() {
+        updateUILanguage(this.value);
+    });
+});
+
+document.getElementById('confirmBookBtn').addEventListener('click', async function () {
+    const selectedLang = document.querySelector('input[name="language"]:checked').value;
+    const labels = translations[selectedLang];
+    
+    const date = document.getElementById('prefDate').value;
+    const time = document.getElementById('prefTime').value;
+    const type = document.getElementById('apptType').value;
+    const dept = document.getElementById('department').value;
+    const urgency = document.getElementById('urgency').value;
+    const reason = document.getElementById('reason').value;
+    const docId = document.getElementById('docSelect').value;
+
+    if (!date || !time || !reason) {
+        alert(labels.fill_fields);
+        return;
+    }
+
+    const btn = this;
+    btn.disabled = true;
+    btn.innerHTML = labels.submit_text;
+
+    try {
+        const resp = await fetch('/api/patient/{{ patient.id }}/book-appointment', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                preferred_date: date,
+                preferred_time: time,
+                appointment_type: type,
+                department: dept,
+                urgency: urgency,
+                notes: reason,
+                language: selectedLang,
+                doctor_id: docId || null
+            })
+        });
+
+        if (resp.ok) {
+            const result = await resp.json();
+            alert(labels.success);
+            location.reload();
+        } else {
+            alert(labels.error);
+            btn.disabled = false;
+            btn.innerHTML = labels.btn_submit;
+        }
+    } catch (e) {
+        alert(labels.network_error);
+        btn.disabled = false;
+        btn.innerHTML = labels.btn_submit;
+    }
+});
+
+// Initialize with default language
+updateUILanguage('en');
+</script>
+{% endblock %}

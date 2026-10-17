@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CareSync Patient Portal</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
+    <style>
+        body {
+            background: linear-gradient(135deg, #43cea2 0%, #185a9d 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-family: 'Inter', sans-serif;
+        }
+
+        .portal-container {
+            width: 100%;
+            max-width: 450px;
+            margin: 0 auto;
+        }
+
+        .login-card {
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+            overflow: hidden;
+        }
+
+        .login-header {
+            background: linear-gradient(135deg, #43cea2 0%, #185a9d 100%);
+            color: white;
+            padding: 40px 20px;
+            text-align: center;
+        }
+
+        .login-header h1 {
+            font-size: 28px;
+            font-weight: 700;
+            margin-bottom: 10px;
+        }
+
+        .login-header p {
+            margin: 0;
+            font-size: 14px;
+            opacity: 0.9;
+        }
+
+        .login-body {
+            padding: 40px;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-group label {
+            font-weight: 600;
+            margin-bottom: 10px;
+            color: #333;
+        }
+
+        .form-group input {
+            border: 2px solid #e0e0e0;
+            padding: 12px 15px;
+            border-radius: 8px;
+            font-size: 14px;
+            transition: border-color 0.3s;
+        }
+
+        .form-group input:focus {
+            border-color: #185a9d;
+            outline: none;
+            box-shadow: 0 0 0 3px rgba(24, 90, 157, 0.1);
+        }
+
+        .submit-btn {
+            width: 100%;
+            padding: 14px;
+            background: linear-gradient(135deg, #43cea2 0%, #185a9d 100%);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-weight: 600;
+            font-size: 16px;
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+
+        .submit-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 20px rgba(24, 90, 157, 0.4);
+        }
+
+        .info-box {
+            background: #f0f8ff;
+            border-left: 4px solid #185a9d;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            font-size: 14px;
+            color: #555;
+        }
+
+        .alert {
+            border-radius: 8px;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="portal-container">
+        <div class="login-card">
+            <div class="login-header">
+                <h1><i class="bi bi-person-circle"></i> Patient Portal</h1>
+                <p>Access your Medical Records & AI Assistant</p>
+            </div>
+            <div class="login-body">
+                {% with messages = get_flashed_messages(with_categories=true) %}
+                {% if messages %}
+                {% for category, message in messages %}
+                <div class="alert alert-{{ category }} alert-dismissible fade show" role="alert">
+                    {{ message }}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                </div>
+                {% endfor %}
+                {% endif %}
+                {% endwith %}
+
+                <div class="info-box">
+                    <strong><i class="bi bi-shield-lock"></i> Secure Access</strong><br>
+                    Login with your Patient ID and registered Phone Number to view your history, prescriptions, and
+                    consult our AI.
+                </div>
+
+                <form method="POST">
+                    <div class="form-group">
+                        <label for="patient_id">Patient ID</label>
+                        <input type="text" id="patient_id" name="patient_id" placeholder="e.g., PAT000001" required
+                            class="form-control">
+                    </div>
+
+                    <div class="form-group">
+                        <label for="phone">Phone Number <small class="text-muted">(+91)</small></label>
+                        <div class="input-group">
+                            <span class="input-group-text">+91</span>
+                            <input type="tel" id="phone" name="phone" placeholder="9876543210" required
+                                class="form-control">
+                        </div>
+                    </div>
+
+                    <button type="submit" class="submit-btn">
+                        <i class="bi bi-box-arrow-in-right"></i> Login
+                    </button>
+                </form>
+
+                <div class="text-center mt-4">
+                    <small class="text-muted">Need help? Contact Hospital Support</small>
+                </div>
+                <div class="text-center mt-3">
+                    <a href="{{ url_for('staff_login') }}" class="text-decoration-none">
+                        <i class="bi bi-arrow-left"></i> Back to Staff Login
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+
+</html>

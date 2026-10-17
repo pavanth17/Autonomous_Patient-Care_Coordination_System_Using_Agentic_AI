@@ -1,0 +1,440 @@
+{% extends "dashboard_base.html" %}
+
+{% block title %}Patient History - {{ patient.full_name }}{% endblock %}
+
+{% block content %}
+<div class="content-header">
+    <div class="d-flex justify-content-between align-items-center">
+        <div>
+            <h1>Patient History</h1>
+            <p class="text-muted mb-0">{{ patient.full_name }} | {{ patient.patient_id }} | Room {{ patient.room_number }}, Bed {{ patient.bed_number }}</p>
+        </div>
+        <div>
+            {% if staff.role in ['doctor', 'admin'] %}
+            <a href="{{ url_for('add_doctor_note', patient_id=patient.id) }}" class="btn btn-primary">
+                <i data-feather="file-text"></i> Add Note
+            </a>
+            {% endif %}
+            <a href="{{ url_for('add_treatment', patient_id=patient.id) }}" class="btn btn-outline-primary">
+                <i data-feather="plus-circle"></i> Log Treatment
+            </a>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-lg-3">
+        <div class="card mb-3">
+            <div class="card-header">
+                <h5 class="mb-0">Patient Info</h5>
+            </div>
+            <div class="card-body">
+                <dl class="patient-info">
+                    <dt>Full Name</dt>
+                    <dd>{{ patient.full_name }}</dd>
+                    
+                    <dt>Age / Gender</dt>
+                    <dd>{{ patient.age }} years / {{ patient.gender }}</dd>
+                    
+                    <dt>Blood Type</dt>
+                    <dd>{{ patient.blood_type or 'Unknown' }}</dd>
+                    
+                    <dt>Admission Date</dt>
+                    <dd>{{ patient.admission_date.strftime('%Y-%m-%d') }}</dd>
+                    
+                    <dt>Status</dt>
+                    <dd>
+                        <span class="badge badge-{{ 'danger' if patient.status == 'emergency' else 'warning' if patient.status == 'icu' else 'primary' }}">
+                            {{ patient.status|upper }}
+                        </span>
+                    </dd>
+                    
+                    <dt>Diagnosis</dt>
+                    <dd>{{ patient.diagnosis or 'Pending' }}</dd>
+                    
+                    <dt>Assigned Doctor</dt>
+                    <dd>{{ patient.assigned_doctor.full_name if patient.assigned_doctor else 'Unassigned' }}</dd>
+                    
+                    <dt>Assigned Nurse</dt>
+                    <dd>{{ patient.assigned_nurse.full_name if patient.assigned_nurse else 'Unassigned' }}</dd>
+                </dl>
+            </div>
+        </div>
+
+        <div class="card mb-3">
+            <div class="card-header">
+                <h5 class="mb-0">Quick Actions</h5>
+            </div>
+            <div class="card-body">
+                <a href="{{ url_for('patient_detail', patient_id=patient.id) }}" class="btn btn-outline-primary btn-block mb-2">
+                    <i data-feather="user"></i> Patient Details
+                </a>
+                <a href="{{ url_for('patient_medications', patient_id=patient.id) }}" class="btn btn-outline-secondary btn-block mb-2">
+                    <i data-feather="thermometer"></i> Medications
+                </a>
+                <a href="{{ url_for('patient_risk_analysis', patient_id=patient.id) }}" class="btn btn-outline-info btn-block">
+                    <i data-feather="activity"></i> AI Risk Analysis
+                </a>
+            </div>
+        </div>
+
+        {% if risk_assessments %}
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">Risk History</h5>
+            </div>
+            <div class="card-body">
+                <div class="risk-history">
+                    {% for assessment in risk_assessments[:5] %}
+                    <div class="risk-item">
+                        <span class="badge badge-{{ 'danger' if assessment.risk_level in ['critical', 'high'] else 'warning' if assessment.risk_level == 'moderate' else 'success' }}" style="font-size: 0.9rem; min-width: 40px; text-align: center;">
+                            {{ assessment.risk_score or 0 }}
+                        </span>
+                        <small class="text-muted">{{ assessment.assessed_at.strftime('%m/%d %H:%M') }}</small>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+
+    <div class="col-lg-9">
+        <ul class="nav nav-tabs" id="historyTabs">
+            <li class="nav-item">
+                <a class="nav-link active" data-bs-toggle="tab" href="#notes">Doctor Notes</a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link" data-bs-toggle="tab" href="#treatments">Treatments</a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link" data-bs-toggle="tab" href="#vitals">Vitals History</a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link" data-bs-toggle="tab" href="#meds">Medication Log</a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link" data-bs-toggle="tab" href="#alerts">Alerts</a>
+            </li>
+        </ul>
+
+        <div class="tab-content mt-3">
+            <div class="tab-pane fade show active" id="notes">
+                {% if notes %}
+                <div class="notes-timeline">
+                    {% for note in notes %}
+                    <div class="note-card">
+                        <div class="note-header">
+                            <span class="badge badge-{{ 'primary' if note.note_type == 'progress' else 'success' if note.note_type == 'discharge' else 'info' }}">
+                                {{ note.note_type|title }}
+                            </span>
+                            <span class="note-author">Dr. {{ note.doctor.full_name }}</span>
+                            <span class="note-date">{{ note.created_at.strftime('%Y-%m-%d %H:%M') }}</span>
+                        </div>
+                        <div class="note-body">
+                            {% if note.subjective %}
+                            <div class="soap-section">
+                                <strong>Subjective:</strong>
+                                <p>{{ note.subjective }}</p>
+                            </div>
+                            {% endif %}
+                            {% if note.objective %}
+                            <div class="soap-section">
+                                <strong>Objective:</strong>
+                                <p>{{ note.objective }}</p>
+                            </div>
+                            {% endif %}
+                            {% if note.assessment %}
+                            <div class="soap-section">
+                                <strong>Assessment:</strong>
+                                <p>{{ note.assessment }}</p>
+                            </div>
+                            {% endif %}
+                            {% if note.plan %}
+                            <div class="soap-section">
+                                <strong>Plan:</strong>
+                                <p>{{ note.plan }}</p>
+                            </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+                {% else %}
+                <div class="empty-state">
+                    <i data-feather="file-text"></i>
+                    <p>No doctor notes recorded</p>
+                </div>
+                {% endif %}
+            </div>
+
+            <div class="tab-pane fade" id="treatments">
+                {% if treatments %}
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead>
+                            <tr>
+                                <th>Date/Time</th>
+                                <th>Type</th>
+                                <th>Description</th>
+                                <th>Performed By</th>
+                                <th>Notes</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for treatment in treatments %}
+                            <tr>
+                                <td>{{ treatment.performed_at.strftime('%Y-%m-%d %H:%M') }}</td>
+                                <td><span class="badge badge-secondary">{{ treatment.treatment_type }}</span></td>
+                                <td>{{ treatment.description }}</td>
+                                <td>{{ treatment.staff.full_name }}</td>
+                                <td>{{ treatment.notes or '-' }}</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% else %}
+                <div class="empty-state">
+                    <i data-feather="clipboard"></i>
+                    <p>No treatments recorded</p>
+                </div>
+                {% endif %}
+            </div>
+
+            <div class="tab-pane fade" id="vitals">
+                {% if vitals %}
+                <div class="table-responsive">
+                    <table class="table table-sm">
+                        <thead>
+                            <tr>
+                                <th>Time</th>
+                                <th>HR</th>
+                                <th>BP</th>
+                                <th>O2</th>
+                                <th>Temp</th>
+                                <th>RR</th>
+                                <th>Status</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for vital in vitals %}
+                            <tr class="{{ 'table-danger' if vital.status == 'critical' else 'table-warning' if vital.status == 'warning' else '' }}">
+                                <td>{{ vital.recorded_at.strftime('%m/%d %H:%M') }}</td>
+                                <td>{{ vital.heart_rate|round|int if vital.heart_rate else '-' }}</td>
+                                <td>{{ vital.blood_pressure_systolic }}/{{ vital.blood_pressure_diastolic }}</td>
+                                <td>{{ vital.oxygen_saturation|round(1) if vital.oxygen_saturation else '-' }}%</td>
+                                <td>{{ vital.temperature|round(1) if vital.temperature else '-' }}°F</td>
+                                <td>{{ vital.respiratory_rate if vital.respiratory_rate else '-' }}</td>
+                                <td>
+                                    <span class="badge badge-{{ 'danger' if vital.status == 'critical' else 'warning' if vital.status == 'warning' else 'success' }}">
+                                        {{ vital.status|upper }}
+                                    </span>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% else %}
+                <div class="empty-state">
+                    <i data-feather="activity"></i>
+                    <p>No vitals recorded</p>
+                </div>
+                {% endif %}
+            </div>
+
+            <div class="tab-pane fade" id="meds">
+                {% if medications %}
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead>
+                            <tr>
+                                <th>Date/Time</th>
+                                <th>Medication</th>
+                                <th>Dosage</th>
+                                <th>Route</th>
+                                <th>Administered By</th>
+                                <th>Status</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for admin in medications %}
+                            <tr>
+                                <td>{{ admin.administered_at.strftime('%Y-%m-%d %H:%M') }}</td>
+                                <td>{{ admin.medication.name }}</td>
+                                <td>{{ admin.dosage_given }}</td>
+                                <td>{{ admin.route or '-' }}</td>
+                                <td>{{ admin.administered_by.full_name }}</td>
+                                <td>
+                                    <span class="badge badge-{{ 'success' if admin.status == 'administered' else 'warning' }}">
+                                        {{ admin.status|upper }}
+                                    </span>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% else %}
+                <div class="empty-state">
+                    <i data-feather="thermometer"></i>
+                    <p>No medication administrations recorded</p>
+                </div>
+                {% endif %}
+            </div>
+
+            <div class="tab-pane fade" id="alerts">
+                {% if alerts %}
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead>
+                            <tr>
+                                <th>Date/Time</th>
+                                <th>Type</th>
+                                <th>Severity</th>
+                                <th>Title</th>
+                                <th>Message</th>
+                                <th>Status</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for alert in alerts %}
+                            <tr class="{{ 'table-danger' if alert.severity == 'critical' else 'table-warning' if alert.severity == 'warning' else '' }}">
+                                <td>{{ alert.created_at.strftime('%Y-%m-%d %H:%M') }}</td>
+                                <td>{{ alert.alert_type }}</td>
+                                <td>
+                                    <span class="badge badge-{{ 'danger' if alert.severity == 'critical' else 'warning' if alert.severity == 'warning' else 'info' }}">
+                                        {{ alert.severity|upper }}
+                                    </span>
+                                </td>
+                                <td>{{ alert.title }}</td>
+                                <td>{{ alert.message[:50] }}{% if alert.message|length > 50 %}...{% endif %}</td>
+                                <td>
+                                    {% if alert.is_acknowledged %}
+                                    <span class="text-success">Acknowledged</span>
+                                    {% else %}
+                                    <span class="text-danger">Active</span>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% else %}
+                <div class="empty-state">
+                    <i data-feather="bell"></i>
+                    <p>No alerts recorded</p>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+.patient-info dt {
+    font-weight: 600;
+    color: #6c757d;
+    font-size: 0.8rem;
+    margin-top: 10px;
+}
+
+.patient-info dd {
+    margin-bottom: 0;
+    color: #1a1a2e;
+}
+
+.patient-info dt:first-child {
+    margin-top: 0;
+}
+
+.btn-block {
+    display: block;
+    width: 100%;
+}
+
+.risk-history {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.risk-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.notes-timeline {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+}
+
+.note-card {
+    border: 1px solid #e0e0e0;
+    border-radius: 8px;
+    padding: 16px;
+    background: #fff;
+}
+
+.note-header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 12px;
+    padding-bottom: 12px;
+    border-bottom: 1px solid #eee;
+}
+
+.note-author {
+    font-weight: 600;
+}
+
+.note-date {
+    color: #6c757d;
+    font-size: 0.85rem;
+    margin-left: auto;
+}
+
+.soap-section {
+    margin-bottom: 12px;
+}
+
+.soap-section:last-child {
+    margin-bottom: 0;
+}
+
+.soap-section strong {
+    color: #1a1a2e;
+}
+
+.soap-section p {
+    margin: 4px 0 0 0;
+    color: #666;
+}
+
+.empty-state {
+    text-align: center;
+    padding: 40px;
+    color: #6c757d;
+}
+
+.empty-state i {
+    width: 48px;
+    height: 48px;
+    margin-bottom: 16px;
+}
+
+.nav-tabs .nav-link {
+    color: #6c757d;
+}
+
+.nav-tabs .nav-link.active {
+    color: #007bff;
+    font-weight: 600;
+}
+</style>
+{% endblock %}

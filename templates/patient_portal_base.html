@@ -1,0 +1,55 @@
+{% extends "base.html" %}
+
+{% block navbar %}
+<nav class="navbar navbar-expand-lg navbar-dark bg-primary fixed-top">
+    <div class="container-fluid">
+        <a class="navbar-brand" href="{{ url_for('patient_portal_dashboard') }}">
+            <i class="bi bi-heart-pulse-fill me-2"></i>CareSync Patient
+        </a>
+        <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+            <span class="navbar-toggler-icon"></span>
+        </button>
+        <div class="collapse navbar-collapse" id="navbarNav">
+            <ul class="navbar-nav ms-auto">
+                <li class="nav-item">
+                    <a class="nav-link" href="{{ url_for('patient_portal_dashboard') }}">
+                        <i class="bi bi-house me-1"></i>Dashboard
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" href="{{ url_for('patient_portal_medications') }}">
+                        <i class="bi bi-pill me-1"></i>Medications
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" href="{{ url_for('patient_portal_appointments') }}">
+                        <i class="bi bi-calendar-event me-1"></i>Appointments
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" href="{{ url_for('patient_medical_records_page') }}">
+                        <i class="bi bi-file-medical me-1"></i>Medical Records
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" href="{{ url_for('patient_portal_chat') }}">
+                        <i class="bi bi-chat-dots me-1"></i>AI Chat
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" href="{{ url_for('patient_logout') }}">
+                        <i class="bi bi-box-arrow-right me-1"></i>Logout
+                    </a>
+                </li>
+            </ul>
+        </div>
+    </div>
+</nav>
+{% endblock %}
+
+{% block content %}
+<div class="container mt-5 pt-5">
+    {% block patient_content %}
+    {% endblock %}
+</div>
+{% endblock %}
