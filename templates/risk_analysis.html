@@ -28,6 +28,14 @@
                     Analyzed at: {{ analysis.analyzed_at[:19] if analysis.analyzed_at else 'N/A' }}<br>
                     Based on {{ analysis.vital_count }} vital records
                 </p>
+                <p class="small text-muted mb-0">
+                    {% if analysis.model_probability is not none %}
+                    Demo model signal: {{ '%.0f'|format(analysis.model_probability * 100) }}%
+                    (trained on {{ analysis.model_training_samples }} synthetic records; not clinically validated)
+                    {% else %}
+                    Demo model signal unavailable
+                    {% endif %}
+                </p>
             </div>
         </div>
 

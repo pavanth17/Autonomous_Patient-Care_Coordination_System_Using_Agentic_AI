@@ -365,7 +365,6 @@ def main():
 
     # Default: run the web server.
     import services
-    services.train_demo_model()
     bootstrap_ward()
 
     from routing import start_monitor

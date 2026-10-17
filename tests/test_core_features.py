@@ -25,18 +25,15 @@ from models import (  # noqa: E402
     StaffMember,
     VitalSign,
 )
-from predictive_analytics import risk_predictor  # noqa: E402
+from services import risk_predictor  # noqa: E402
 from synthetic_data import initialize_synthetic_data  # noqa: E402
 
 
 @pytest.fixture()
 def client(monkeypatch):
     """A populated application client with no network side effects."""
-    import predictive_analytics
-
     app.config.update(TESTING=True)
-    monkeypatch.setattr(risk_predictor, 'ai_consult', lambda *args: None)
-    monkeypatch.setattr(predictive_analytics, 'create_predictive_alert', lambda *args: None)
+    monkeypatch.setattr('services.create_predictive_alert', lambda *args: None)
 
     with app.app_context():
         db.drop_all()
@@ -107,8 +104,13 @@ def test_public_admin_and_risk_features(client):
         assert risk_response.status_code == 200
         assert risk_data['model_training_samples'] == 60
         assert 0 <= risk_data['model_risk_probability'] <= 1
+        assert risk_data['vital_count'] >= 3
+        assert risk_data['analyzed_at']
         assert client.get('/api/risk-analysis/all').status_code == 200
-        assert client.get(f'/patient/{patient.id}/risk-analysis').status_code == 200
+        risk_page = client.get(f'/patient/{patient.id}/risk-analysis')
+        assert risk_page.status_code == 200
+        assert b'Demo model signal' in risk_page.data
+        assert b'Based on ' in risk_page.data
 
         created_shift = client.post(
             '/shifts/create',
@@ -121,6 +123,25 @@ def test_public_admin_and_risk_features(client):
             follow_redirects=False,
         )
         assert created_shift.status_code == 302
+
+
+def test_risk_analysis_handles_insufficient_vitals(client):
+    with app.app_context():
+        patient = first_active_patient()
+        VitalSign.query.filter_by(patient_id=patient.id).delete()
+        db.session.commit()
+        login_staff(client, 'ADM0001', 'admin123')
+
+        response = client.get(f'/api/risk-analysis/{patient.id}')
+        analysis = response.get_json()
+        assert response.status_code == 200
+        assert analysis['risk_level'] == 'unknown'
+        assert analysis['vital_count'] == 0
+        assert analysis['analyzed_at']
+        assert analysis['model_training_samples'] == 60
+        assert client.get(
+            f'/patient/{patient.id}/risk-analysis'
+        ).status_code == 200
 
 
 def test_staff_workflows_and_hardware_vitals(client):

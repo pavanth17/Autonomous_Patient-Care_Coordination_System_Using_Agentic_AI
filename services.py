@@ -1029,6 +1029,23 @@ class RiskPredictor:
             log.error("Error computing model risk probability: %s", exc)
             return None
 
+    @staticmethod
+    def _trend(values, window=5):
+        """Return the least-squares slope from oldest to newest readings."""
+        import numpy as np
+
+        recent = list(values[:window])[::-1]
+        if len(recent) < 2:
+            return 0.0
+        return float(np.polyfit(np.arange(len(recent)), recent, 1)[0])
+
+    @staticmethod
+    def _direction(slope, tolerance):
+        if slope > tolerance:
+            return 'increasing'
+        if slope < -tolerance:
+            return 'decreasing'
+        return 'stable'
 
     def analyze_patient_risk(self, patient_id):
         """Score a patient's deterioration risk from their recent vitals."""
@@ -1037,9 +1054,18 @@ class RiskPredictor:
         vitals = VitalSign.query.filter_by(patient_id=patient_id).order_by(
             VitalSign.recorded_at.desc()).limit(20).all()
         if len(vitals) < 3:
+            assessed_at = datetime.now().isoformat()
             return {'risk_level': 'unknown', 'risk_score': 0,
                     'risk_factors': [], 'predictions': [],
-                    'message': 'Insufficient data for analysis'}
+                    'message': 'Insufficient data for analysis',
+                    'patient_id': patient_id,
+                    'vital_count': len(vitals),
+                    'model_probability': None,
+                    'model_risk_probability': 0.0,
+                    'model_training_samples': self.model_training_samples,
+                    'latest_vitals': None,
+                    'assessed_at': assessed_at,
+                    'analyzed_at': assessed_at}
 
         latest = vitals[0]
         score = 0
@@ -1129,15 +1155,18 @@ class RiskPredictor:
                   and factor['type'] == 'oxygen_saturation'):
                 predictions.append('Oxygen levels may need intervention within 30-60 minutes')
 
+        model_probability = self.model_risk_probability(latest)
+        assessed_at = datetime.now().isoformat()
         return {
             'patient_id': patient_id,
             'risk_level': level,
             'risk_score': score,
             'risk_factors': factors,
             'predictions': predictions,
-            'model_probability': self.model_risk_probability(latest),
-            'model_risk_probability': self.model_risk_probability(latest) if self.model_risk_probability(latest) is not None else 0.0,
-            'model_training_samples': self.training_metadata.get('sample_count', 0) if self.training_metadata else 0,
+            'model_probability': model_probability,
+            'model_risk_probability': model_probability if model_probability is not None else 0.0,
+            'model_training_samples': self.model_training_samples,
+            'vital_count': len(vitals),
             'latest_vitals': {
                 'heart_rate': latest.heart_rate,
                 'blood_pressure': f"{latest.blood_pressure_systolic}/"
@@ -1145,7 +1174,8 @@ class RiskPredictor:
                 'oxygen_saturation': latest.oxygen_saturation,
                 'temperature': latest.temperature,
             },
-            'assessed_at': datetime.now().isoformat(),
+            'assessed_at': assessed_at,
+            'analyzed_at': assessed_at,
         }
 
 
@@ -1166,11 +1196,11 @@ def train_demo_model():
         return None
 
 
+# Routes can be served by WSGI/Flask CLI as well as app.main(). Train the
+# optional model when the risk service is loaded so every entry point is ready.
+train_demo_model()
 
 
-    @staticmethod
-    def _trend(values, window=5):
-        """Least-squares slope of the most recent ``window`` readings."""
 
 
 def create_predictive_alert(patient_id, analysis):
@@ -1246,13 +1276,3 @@ def analyze_all_patients(create_alerts=True):
         except Exception as exc:
             log.error("Risk analysis failed for patient %s: %s", patient.id, exc)
     return results
-
-
-
-    @staticmethod
-    def _direction(slope, tolerance):
-        if slope > tolerance:
-            return 'increasing'
-        if slope < -tolerance:
-            return 'decreasing'
-        return 'stable'
